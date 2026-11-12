@@ -4,11 +4,17 @@ Discovery ranks metadata; a model admits, replaces or rejects the candidate. No
 business entity, file format, skill name or keyword decides applicability here.
 """
 
+import inspect
 import json
 from pathlib import Path
 import re
 
 from .semantic_decision import structured_decision, ground_user_quote
+from .skill_disclosure import (
+    DEFAULT_ADMISSION_BODY_BUDGET,
+    build_admission_catalog,
+    build_layered_skill_body,
+)
 from .skill_router import SkillRouter, SemanticSkillMatcher
 from .skills import get_available_skills, read_skill
 from .telemetry import TelemetryStats
@@ -31,8 +37,10 @@ use_default_rules=true只用于用户明确执行整项技能且没有替换原�
 用户明确否定某技能、改口、讨论技能定义或引用技能名称时，不可当成执行授权。历史助手声称不算用户确认。
 task_contract已独立确定本轮目标、限制和交付；只要表格等呈现偏好不能跳过准入，不能在此阶段重新解释为物理文件。
 如果选择的技能正文尚未提供，运行时会加载后再次让你审核；不能用未读正文的选择直接触发执行。
+当已载入正文包含【可用未展开章节】且需要特定章节细则才能判断是否适用时，可先提交 action=inspect（填 skill_id 与可选 section）按需展开后再决策。
 只提交简短结构化决策，reason仅使用枚举代码。
 action为use时填写skill_id，仅在用户明确支持技能特定规则时use_default_rules=true，question必须保持为空字符串""。
+action为inspect时填写skill_id（及可选section），use_default_rules=false、rule_basis=""、question=""。
 action为general时skill_id=null、use_default_rules=false、rule_basis=""，question必须保持为空字符串""。
 action为clarify时给出具体问题（写入question），skill_id=null、use_default_rules=false、rule_basis=""。
 修复反馈存在时重新核对原始任务，不能把结构错误变为完成声明。模型审核不代替权限与各引擎的证据校验。"""
@@ -42,17 +50,19 @@ def decision_tool(ids, rule_bases=None, allow_defaults=True):
     text = {'type': 'string'}
     return {'type': 'function', 'function': {'name': 'submit_skill_admission', 'description': '记录技能准入结论，无执行副作用。',
         'parameters': {'type': 'object', 'additionalProperties': False, 'properties': {
-            'action': {'type': 'string', 'enum': ['use', 'general', 'clarify'],
-                       'description': 'use=准入候选技能; general=不使用特化技能通用处理; clarify=缺少关键信息向用户追问'},
+            'action': {'type': 'string', 'enum': ['use', 'general', 'clarify', 'inspect'],
+                       'description': 'use=准入候选技能; inspect=按需展开候选技能的指定章节后继续审核; general=不使用特化技能通用处理; clarify=缺少关键信息向用户追问'},
             'skill_id': {'type': ['string', 'null'], 'enum': [None, *ids],
-                         'description': '采用的技能ID；当 action 为 general 或 clarify 时必须为 null'},
+                         'description': '采用的技能ID；当 action 为 general 或 clarify 时必须为 null；action 为 inspect 时必须指定待展开的技能ID'},
+            'section': {'type': ['string', 'null'],
+                        'description': '仅当 action=inspect 时填写需要按需展开的章节/参考文件名；其他情况省略或设为 null'},
             'use_default_rules': {'type': 'boolean', 'enum': [False, True] if allow_defaults else [False],
                                   'description': '仅当 action=use 且用户指令明确契合技能特有默认业务规则时为 true；其余情况必须为 false'},
             'rule_basis': {'type': 'string', 'enum': list(dict.fromkeys(['', *(rule_bases or [])])),
                            'description': '仅在 use_default_rules=true 时逐字引用用户原话依据；否则必须为空字符串 ""'},
             'reason': {'type': 'string', 'enum': ['applicable', 'scope_mismatch', 'better_candidate', 'no_skill_needed', 'ambiguous']},
             'question': {'type': 'string', 'maxLength': 200,
-                         'description': '仅在 action=clarify 时填写具体追问问题；当 action 为 use 或 general 时必须保持为空字符串 ""'}},
+                         'description': '仅在 action=clarify 时填写具体追问问题；当 action 为 use / inspect / general 时必须保持为空字符串 ""'}},
             'required': ['action', 'skill_id', 'use_default_rules', 'rule_basis', 'reason', 'question']}}}
 
 
@@ -111,13 +121,19 @@ def validate_decision(value, ids, texts):
 def normalize_admission_echo(verdict, intent):
     """Ignore byte-for-byte contract echoes; never accept a rewritten contract."""
     allowed = {'action', 'skill_id', 'use_default_rules', 'rule_basis', 'reason', 'question'}
+    optional = {'section'}
     if not isinstance(verdict, dict) or not allowed.issubset(verdict):
         raise ValueError('候选准入字段不完整')
-    for key in set(verdict) - allowed:
+    for key in set(verdict) - allowed - optional:
         expected = intent if key == 'task_contract' else intent.get(key)
         if (key != 'task_contract' and key not in intent) or verdict[key] != expected:
             raise ValueError('候选准入只能提交选择结果，不能改写任务契约')
-    return {key: verdict[key] for key in allowed}
+    normalized = {key: verdict[key] for key in allowed}
+    if 'section' in verdict and verdict['section'] is not None:
+        if not isinstance(verdict['section'], str):
+            raise ValueError('section 参数必须为字符串')
+        normalized['section'] = verdict['section'].strip()
+    return normalized
 
 
 def admit_skill(prompt, history, files, provisional, model, policy, telemetry, deadline,
@@ -129,7 +145,9 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
     spreadsheet_input = any(Path(f).suffix.lower() in {'.xlsx', '.xlsm', '.xls', '.csv'} for f in files)
     request = prompt.split('用户指令：')[-1]
     from .task_intent import has_physical_artifact_request
-    has_artifact_req = has_physical_artifact_request(request)
+    from .tool_routing import is_document_translation_task
+    has_artifact_req = has_physical_artifact_request(request, attached_files=files)
+    is_doc_translation = is_document_translation_task(prompt, provisional)
 
     # 纯只读/查阅模式免检快轨 (Read Mode Fast Path, < 1ms):
     # 若任务不要求生成任何物理交付物，且无专有执行流水线要求 (not requires_execution)，且不涉及表格工作簿原地更新与文档交付:
@@ -140,12 +158,10 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
         and not getattr(provisional, "requires_execution", False)
         and getattr(provisional, "is_inspect_intent", False)
         and not has_artifact_req
+        and not is_doc_translation
     )
-    if (not provisional.skill_id or is_pure_read) and not spreadsheet_input and not has_artifact_req:
+    if (not provisional.skill_id or is_pure_read) and not spreadsheet_input and not has_artifact_req and not is_doc_translation:
         provisional.source_formats = list(dict.fromkeys(Path(f).suffix.lower() for f in files))
-        if provisional.skill_id and not getattr(provisional, "skill_context", ""):
-            body_reader = read_body or (lambda identifier: read_skill(identifier, prompt=request))
-            provisional.skill_context = body_reader(provisional.skill_id) or ""
         return provisional
     catalog = {s['id']: s for s in skills}
     request = prompt.split('用户指令：')[-1]
@@ -166,16 +182,57 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
         return general_route(prompt, history, files, intent)
     ranking = SemanticSkillMatcher(skills).match(request)
     rank = {identifier: score for identifier, score, _ in ranking}
-    metadata = [{k: s.get(k) for k in ('id', 'name', 'description', 'execution_mode')}
-                for s in sorted(skills, key=lambda s: rank.get(s['id'], 0), reverse=True)]
-    body_reader = read_body or (lambda identifier: read_skill(identifier, prompt=request))
-    inspected = {}; current = provisional.skill_id; feedback = None; pending_question = ''
-    for attempt in range(2):
+    metadata = build_admission_catalog(skills, rank, provisional_id=provisional.skill_id)
+    raw_cache = {}
+    inspected = {}
+    inspected_meta = {}
+
+    def load_layered_skill(identifier, *, section=None, budget=DEFAULT_ADMISSION_BODY_BUDGET):
+        if read_body is not None:
+            if identifier not in raw_cache:
+                raw_cache[identifier] = read_body(identifier) or ''
+            return build_layered_skill_body(
+                identifier,
+                raw_cache[identifier],
+                prompt=request,
+                section=section,
+                max_chars=budget,
+            )
+        try:
+            params = inspect.signature(read_skill).parameters
+            accepts_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+            accepts_section = accepts_varkw or 'section' in params
+            accepts_max_chars = accepts_varkw or 'max_chars' in params
+        except (TypeError, ValueError):
+            accepts_section = False
+            accepts_max_chars = False
+        kwargs = {'prompt': request}
+        if accepts_section and section is not None:
+            kwargs['section'] = section
+        if accepts_max_chars:
+            kwargs['max_chars'] = budget
+        raw = read_skill(identifier, **kwargs) or ''
+        if (section and not accepts_section) or len(raw) > budget:
+            return build_layered_skill_body(
+                identifier, raw, prompt=request, section=section, max_chars=budget
+            )
+        has_unloaded = "【可用未展开章节" in raw
+        return {
+            "text": raw,
+            "has_unloaded": has_unloaded,
+            "disclosure_level": "L2_section" if section else ("L2_ref" if has_unloaded else "full"),
+        }
+
+    current = provisional.skill_id; feedback = None; pending_question = ''
+    non_inspect_attempts = 0
+    inspect_used = False
+    while non_inspect_attempts < 2:
         if current in catalog and current not in inspected:
-            body = body_reader(current) or ''
-            if not body.strip() or len(body) > 60000:
+            layered = load_layered_skill(current)
+            if not layered['text'].strip():
                 raise AdmissionUnavailable('候选技能正文缺失或超出准入预算', intent)
-            inspected[current] = body
+            inspected[current] = layered['text']
+            inspected_meta[current] = layered
         payload = {'request': request, 'user_history': [] if intent.get('instruction_relation') == 'standalone' else users, 'files': list(files), 'catalog': metadata,
                    'initial_candidate': provisional.skill_id, 'task_contract': intent, 'inspected_skills': inspected, 'feedback': feedback}
         if attachment_probe and attachment_probe.get('profiles'):
@@ -186,6 +243,32 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
                     allow_defaults=intent['skill_invocation']['mode'] == 'execute' and not intent['skill_invocation']['replace_defaults']), model, policy,
                                           telemetry, deadline, 'skill_admission', max_tokens=1200)
             verdict = normalize_admission_echo(verdict, intent)
+            inspect_section = verdict.pop('section', None)
+            if verdict.get('action') == 'inspect':
+                target_id = verdict.get('skill_id')
+                if target_id not in catalog:
+                    raise ValueError('inspect 必须指定当前可用目录中的 skill_id')
+                if verdict.get('use_default_rules') or (isinstance(verdict.get('question'), str) and verdict['question'].strip()):
+                    raise ValueError('inspect 仅用于展开章节，use_default_rules 必须为 false 且 question 为空')
+                if inspect_used:
+                    raise ValueError('已按需展开过章节，请基于现有内容提交 use / general / clarify')
+                layered = load_layered_skill(target_id, section=inspect_section or None)
+                if not layered['text'].strip():
+                    raise AdmissionUnavailable('候选技能正文缺失或超出准入预算', intent)
+                inspected[target_id] = layered['text']
+                inspected_meta[target_id] = layered
+                inspect_used = True
+                current = target_id
+                telemetry.record_guard('skill_admission', 'inspect_section', {
+                    'skill_id': target_id,
+                    'section': inspect_section or '',
+                    'disclosure_level': layered.get('disclosure_level', 'L2_section'),
+                })
+                feedback = {
+                    'decision': {'action': 'inspect', 'skill_id': target_id, 'section': inspect_section or ''},
+                    'status': f'已加载技能 {target_id} 的指定章节，请基于更新后的正文提交最终结论',
+                }
+                continue
             # 容错归一化：若模型在非 use 动作下未及时清除技能字段，自动对齐
             if verdict.get('action') in {'general', 'clarify'}:
                 if verdict.get('skill_id') is not None or verdict.get('use_default_rules'):
@@ -249,10 +332,12 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
             if verdict['action'] == 'use' and selected not in inspected:
                 telemetry.record_guard('skill_admission', 'inspect_alternative', {'skill_id': selected})
                 current = selected; feedback = {'decision': verdict, 'required': '审核新候选正文后再准入'}
+                non_inspect_attempts += 1
                 continue
             telemetry.record_guard('skill_admission', verdict['action'],
                 {'initial_candidate': provisional.skill_id, 'skill_id': selected, 'use_default_rules': verdict['use_default_rules'],
-                 'reason': verdict['reason'], 'requirement_ids': [r['id'] for r in verdict['requirements']]})
+                 'reason': verdict['reason'], 'requirement_ids': [r['id'] for r in verdict['requirements']],
+                 'disclosure_level': inspected_meta.get(selected, {}).get('disclosure_level', 'none') if selected else 'none'})
             if verdict['action'] == 'clarify':
                 raise AdmissionClarification(verdict['question'])
             routed = SkillRouter.route(prompt, history, available_skills=skills, files=files,
@@ -283,12 +368,16 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
             # Certified craft/design skills contribute guidelines unconditionally;
             # Custom workflow skills only contribute execution instructions when default rules are accepted.
             is_certified = catalog.get(selected, {}).get('type') == 'certified'
+            selected_meta = inspected_meta.get(selected, {}) if selected else {}
             if selected and (is_certified or verdict['use_default_rules']):
                 routed.skill_context = inspected[selected]
+                routed.has_unloaded_sections = bool(selected_meta.get('has_unloaded'))
             else:
                 routed.skill_context = ''
+                routed.has_unloaded_sections = False
             if selected and verdict['task_mode'] == 'consult':
                 routed.skill_context = '[待解释的技能资料；不能作为执行授权]\n' + inspected[selected]
+                routed.has_unloaded_sections = bool(selected_meta.get('has_unloaded'))
                 if not routed.is_generate_intent:
                     routed.requires_execution = False
             return routed
@@ -297,6 +386,7 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
         except ValueError as error:
             telemetry.record_guard('skill_admission_attempt', 'reject', str(error)[:300])
             feedback = {'error': str(error)}
+            non_inspect_attempts += 1
     if pending_question.strip() and not re.search(r'(?:输出为|希望.*格式|什么格式|格式.*例如|纯文本|报表|图片|excel|word|pdf|ppt)', pending_question, re.I):
         raise AdmissionClarification(pending_question)
     raise AdmissionUnavailable('技能准入经复核仍未通过，未执行任何候选技能', intent)

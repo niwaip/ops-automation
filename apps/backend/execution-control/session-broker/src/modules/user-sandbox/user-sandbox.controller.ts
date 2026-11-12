@@ -235,6 +235,14 @@ export class UserSandboxController {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    // 定时发送 SSE 注释保活心跳包，杜绝长周期执行由于无前台输出导致反向代理、Node.js fetch 或 Docker 虚拟网桥连接断开
+    const keepAliveTimer = setInterval(() => {
+      if (!res.writableEnded) {
+        res.write(': keepalive\n\n');
+      }
+    }, 15000);
 
     let buffer = '';
     let isFinished = false;
@@ -248,6 +256,7 @@ export class UserSandboxController {
     };
 
     const onClose = () => {
+      clearInterval(keepAliveTimer);
       isClientClosed = true;
       abortController?.abort();
       if (!isFinished) {
@@ -341,6 +350,7 @@ export class UserSandboxController {
         res.end();
       }
     } finally {
+      clearInterval(keepAliveTimer);
       res.removeListener('close', onClose);
     }
   }

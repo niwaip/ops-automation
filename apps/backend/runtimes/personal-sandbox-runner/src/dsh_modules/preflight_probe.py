@@ -1,6 +1,6 @@
 """
 Pre-flight attachment probing and physical evidence extraction.
-Runs deterministically (<50ms) before any LLM invocations, discovering
+Runs locally before any LLM invocations, using bounded page samples for PDF visual needs and discovering
 spreadsheet headers, data boundaries, vertical/horizontal layouts,
 and domain cues to empower layered routing and eliminate regex blind-guessing.
 """
@@ -186,11 +186,13 @@ def probe_session_attachments(
             profiles.append(_profile_single_docx(p))
         elif ext == ".pdf":
             has_pdf = True
+            from .visual_reading_policy import profile_pdf
             profiles.append({
                 "file_name": p.name,
                 "kind": "pdf",
                 "domain": "document",
                 "file_size_kb": round(p.stat().st_size / 1024, 1),
+                **profile_pdf(p),
             })
 
     # Build concise single-line summary for LLM prompt injection
@@ -211,7 +213,7 @@ def probe_session_attachments(
                 f"DOCX附件[{pr['file_name']}|段落:{pr.get('paragraphs', 0)}|表格:{pr.get('tables', 0)}|{footer_desc}|规格:{pr.get('page_size', 'A4')}]"
             )
         elif pr.get("kind") == "pdf":
-            summary_parts.append(f"PDF附件[{pr['file_name']}|大小:{pr.get('file_size_kb', 0)}KB]")
+            summary_parts.append(f"PDF附件[{pr['file_name']}|大小:{pr.get('file_size_kb', 0)}KB|读取:{pr.get('reading_mode', 'unknown')}]")
     summary_text = "；".join(summary_parts)
 
     return {

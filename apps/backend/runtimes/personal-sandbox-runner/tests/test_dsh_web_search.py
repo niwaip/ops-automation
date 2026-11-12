@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from unittest.mock import patch
 
 from dsh_modules.web_tools import (
@@ -9,6 +10,12 @@ from dsh_modules.web_tools import (
 
 
 class TestDshWebSearch(unittest.TestCase):
+    def setUp(self):
+        # Completion evaluator historically defaults to /workspace independently
+        # of config.WORKSPACE_DIR. A guard regression must never scan real files.
+        workspace = self.enterContext(tempfile.TemporaryDirectory())
+        self.enterContext(patch('dsh_modules.completion_evaluator.WORKSPACE_DIR', workspace))
+
     def test_decompose_trending_query_uses_chinese_facets_without_github(self):
         queries = decompose_search_queries("bilibili的热点")
         self.assertEqual(len(queries), 3)

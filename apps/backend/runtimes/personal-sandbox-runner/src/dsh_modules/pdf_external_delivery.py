@@ -39,14 +39,16 @@ def _stage_and_check(target, root, skill_dir, prompt, deadline, staged_input=Non
         import shutil
         shutil.copyfile(staged_input, staged)
     from .deliverable_contract import resolve_pdf_page_bounds
-    low, high = resolve_pdf_page_bounds(prompt)
+    from .pdf_output_contract import pdf_page_requirement_text
+    requirement = pdf_page_requirement_text(prompt)
+    low, high = resolve_pdf_page_bounds(requirement)
     if low is None and high is None:
-        count = re.search(r'(\d+|[一二两三四五六七八九十])\s*页', prompt)
+        count = re.search(r'(\d+|[一二两三四五六七八九十])\s*页', requirement)
         if count:
             value = count[1]
             high = int(value) if value.isdigit() else dict(zip('一二两三四五六七八九十', [1,2,2,3,4,5,6,7,8,9,10]))[value]
-            low = None if re.search(r'最多|不超过|至多', prompt[:count.start()]) else high
-        elif re.search(r'单页|single\s*page|one\s*page', prompt, re.I):
+            low = None if re.search(r'最多|不超过|至多', requirement[:count.start()]) else high
+        elif re.search(r'单页|single\s*page|one\s*page', requirement, re.I):
             low = high = 1
     command = [sys.executable, str(Path(skill_dir) / 'pdf/scripts/check_pdf.py'),
                str(staged), '--preview-dir', str(folder)]
@@ -71,8 +73,11 @@ def _stage_and_check(target, root, skill_dir, prompt, deadline, staged_input=Non
 
 
 def enforce_external_pdf_delivery(loop_result, workspace, skill_dir, start, prompt,
-                                  deadline=None, session_files=None):
+                                  deadline=None, session_files=None, *,
+                                  is_inspect_intent=False, is_generate_intent=False):
     """Return whether this boundary took ownership of final delivery."""
+    if is_inspect_intent and not is_generate_intent:
+        return False
     from .pdf_preview_tool import (managed_pdf_export, register_pdf_render,
         record_pdf_failure, review_current_pdf_pages, pdf_delivery_result)
     from .pdf_translation_delivery import enforce_translation_delivery

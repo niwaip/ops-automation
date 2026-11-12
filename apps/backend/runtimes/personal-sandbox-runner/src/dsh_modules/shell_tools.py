@@ -25,7 +25,8 @@ def execute_shell(cmd, workspace, deadline=None, *, _allow_pdf_recovery=True):
     is_heavy_task = bool(re.search(r'(?:ooxml|flow).*translate|render_(?:docx|pdf|spreadsheet)', cmd))
     m_timeout = re.search(r'\btimeout\s+(\d+)\b', cmd)
     if is_heavy_task:
-        bash_max = max(bash_max, 600.0)
+        heavy_timeout = float(os.getenv("DSH_HEAVY_BASH_TIMEOUT", "1800.0"))
+        bash_max = max(bash_max, heavy_timeout)
     if m_timeout:
         cmd_timeout = float(m_timeout.group(1))
         bash_max = max(bash_max, cmd_timeout + 5.0)

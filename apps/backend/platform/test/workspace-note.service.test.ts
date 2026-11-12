@@ -177,6 +177,7 @@ describe('WorkspaceNoteService', () => {
   });
 
   it('should call LLM and refine document in background', async () => {
+    mockPrisma.workspaceNode.findUnique.mockResolvedValue({ id: 'node-1', workspaceId: 'ws-1' });
     (axios.post as jest.Mock).mockResolvedValueOnce({
       data: {
         response: JSON.stringify({
@@ -353,7 +354,7 @@ describe('WorkspaceNoteService', () => {
     expect(baseFolder.type).toBe('folder');
 
     // 2. 验证在分类文件夹下创建了专属子文件夹 (带日期前缀)
-    const instanceFolder = createdNodes.find((n) => /^\d{8}_市场运营方案/.test(n.name));
+    const instanceFolder = createdNodes.find((n) => /^\d{8}_[^_]+_市场运营方案/.test(n.name));
     expect(instanceFolder).toBeDefined();
     expect(instanceFolder.type).toBe('folder');
     expect(instanceFolder.parentId).toBe(baseFolder.id);
@@ -366,6 +367,7 @@ describe('WorkspaceNoteService', () => {
   });
 
   it('should refine folder name and inject artifact catalog via WorkspaceNoteAiHelper', async () => {
+    mockPrisma.workspaceNode.findUnique.mockImplementation(async (args: any) => ({ id: args.where.id }));
     (axios.post as jest.Mock).mockResolvedValueOnce({
       data: {
         response: JSON.stringify({
@@ -451,11 +453,14 @@ describe('WorkspaceNoteService', () => {
       digestJson: { sessionId: 'old-session-123' },
     };
 
+    const today = new Date();
+    const dateTag = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const baseName = `${dateTag}_技术架构_方案设计`;
     mockPrisma.workspaceNode.findFirst.mockImplementation((args: any) => {
       if (
         args?.where?.type === 'folder' &&
         args?.where?.name &&
-        args.where.name.startsWith('20261010_方案设计')
+        args.where.name === baseName
       ) {
         return Promise.resolve(existingOldFolder);
       }
@@ -487,8 +492,8 @@ describe('WorkspaceNoteService', () => {
       .filter((n) => n.type === 'folder')
       .map((n) => n.name);
 
-    expect(createdFolderNames).not.toContain('20261010_方案设计');
-    expect(createdFolderNames.some((n) => /^20261010_方案设计_\d{6}$/.test(n))).toBe(true);
+    expect(createdFolderNames).not.toContain(baseName);
+    expect(createdFolderNames.some((n) => new RegExp(`^${baseName}_\\d{6}$`).test(n))).toBe(true);
   });
 });
 

@@ -7,8 +7,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
 import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
@@ -283,26 +281,7 @@ export class WorkspaceNoteService {
       },
     });
 
-    // 6.1 同步至用户沙箱成果库目录 (/workspace/deliverables/)，供 Agent 检索参考
-    try {
-      const candidateRoots = [
-        path.join('/workspace/data/users', userId, 'workspace'),
-        path.join(process.cwd(), 'data/users', userId, 'workspace'),
-        path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
-      ];
-      for (const cand of candidateRoots) {
-        if (fs.existsSync(cand)) {
-          const targetDir = path.join(cand, 'deliverables', targetFolderName);
-          if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-          }
-          fs.writeFileSync(path.join(targetDir, finalFileName), fileBuffer);
-          break;
-        }
-      }
-    } catch (deliverableSyncErr: any) {
-      this.logger.warn(`Failed to sync note to user deliverables dir: ${deliverableSyncErr.message}`);
-    }
+    // Personal-space storage is the only archived original; sandbox retrieval uses its authenticated API.
 
     // 7. 更新已用空间配额
     await this.prisma.workspace.update({

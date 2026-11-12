@@ -37,6 +37,7 @@ class SkillRoutingResult:
     default_rounds: int = 0
     disclosure_steps: int = 0
     mcp_read_only: bool = False
+    has_unloaded_sections: bool = False
     admission: Dict[str, Any] = field(default_factory=dict)
     source_formats: List[str] = field(default_factory=list)
 
@@ -92,10 +93,11 @@ from .intent_contract import (
     mask_file_references,
     extract_source_and_target_artifacts,
     has_positive_generate_action,
+    is_attachment_in_place_translation,
 )
 
 
-def check_generation_target_is_physical(lower_q: str) -> bool:
+def check_generation_target_is_physical(lower_q: str, attached_files: Optional[List[str]] = None) -> bool:
     """
     Distinguishes whether a generative action targets a physical file deliverable
     (.pdf, .docx, .xlsx, .pptx, etc.) or pure in-chat textual content (summary, outline, advice).
@@ -104,11 +106,11 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     if is_text_only_request(lower_q):
         return False
 
-    # 若未包含任何正向生成动词，绝不属于物理文件生成
-    if not has_positive_generate_action(lower_q, GENERATE_ACTION_PATTERNS):
+    # 若未包含任何正向生成动词或附件原地翻译意图，绝不属于物理文件生成
+    if not (has_positive_generate_action(lower_q, GENERATE_ACTION_PATTERNS) or is_attachment_in_place_translation(lower_q, attached_files)):
         return False
 
-    _, target_fmts, target_files = extract_source_and_target_artifacts(lower_q)
+    _, target_fmts, target_files = extract_source_and_target_artifacts(lower_q, attached_files)
     if target_files or target_fmts:
         return True
 
@@ -242,7 +244,10 @@ def resolve_file_action_intent(
         or bool(re.search(r'(?:只|仅)?(?:提取|抽取).*(?:文字|文本|内容)', masked_q))
     )
     has_summary = any(k in masked_q for k in READONLY_SUMMARY_PATTERNS)
-    has_generate = has_positive_generate_action(masked_q, GENERATE_ACTION_PATTERNS)
+    has_generate = (
+        has_positive_generate_action(masked_q, GENERATE_ACTION_PATTERNS)
+        or is_attachment_in_place_translation(lower_q, attached_files)
+    )
 
     # 4. 无正向生成动作时：只要有附件或涉及文档问答/查阅/提炼，一律天然为纯只读模式 (Read Mode)
     # 彻底告别脆弱的机械关键字枚举，对任何只读问答天然支持！
@@ -260,7 +265,7 @@ def resolve_file_action_intent(
     if has_inspect and re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', masked_q):
         return False, True
 
-    is_physical = check_generation_target_is_physical(lower_q)
+    is_physical = check_generation_target_is_physical(lower_q, attached_files=attached_files)
     if is_physical:
         # 若同时包含输入分析与输出生成（如：“读取1.pdf生成word文档”），两者均置为 True
         return True, (has_inspect or bool(attached_files))
@@ -688,7 +693,8 @@ class SkillRouter:
         reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
         print(f"🎯 [Skill Router] {'采用' if load_skill_context else '候选'}: {result.skill_id}{reasons_info}", flush=True)
         if load_skill_context:
-            result.skill_context = read_skill(result.skill_id, prompt=effective_query)
+            result.skill_context = read_skill(result.skill_id, prompt=effective_query) or ""
+            result.has_unloaded_sections = "【可用未展开章节" in result.skill_context
 
     @classmethod
     def _try_fast_path(
@@ -798,6 +804,9 @@ class SkillRouter:
         # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/大宗商品原料价格/开源生态/最新发布/会议展会时间，而非本地工作区）
         is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION) or bool(attached_files)
         is_cues_match = any(cue in lower_query for cue in SEARCH_CUES)
+        explicit_web = bool(re.search(
+            r'联网|上网|全网|网络.{0,4}(?:搜索|检索|查询)|(?:搜索|检索).{0,12}(?:最新|实时|新闻|网站|网页)',
+            lower_query)) and not is_network_search_forbidden(lower_query)
 
         # 开放域技术/生态/开源项目组件问答探测（如 "xxx 有哪些插件", "xxx 支持哪些模型", "xxx 生态"）
         is_tech_ecosystem_inquiry = bool(
@@ -810,7 +819,8 @@ class SkillRouter:
             re.search(r'https?://[^\s]+|github\.com/[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+|github\s*[-–—:]\s*[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+', lower_query)
         )
 
-        result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry or is_external_url_or_repo) and not is_asking_local
+        result.is_search_intent = explicit_web or (
+            (is_cues_match or is_tech_ecosystem_inquiry or is_external_url_or_repo) and not is_asking_local)
 
         if is_network_search_forbidden(lower_query):
             result.is_search_intent = False
@@ -846,10 +856,10 @@ class SkillRouter:
         # 若涉及本地附件/文件查看或查阅总结，绝不能被误判为开放域检索或通用安装指南
         if is_asking_local and (is_insp or any(k in lower_query for k in CONTENT_QUERY_PATTERNS) or any(k in lower_query for k in READONLY_SUMMARY_PATTERNS)):
             result.is_guide_intent = False
-            result.is_search_intent = False
+            result.is_search_intent = explicit_web
             is_insp = True
 
-        if result.is_guide_intent or result.is_search_intent:
+        if result.is_guide_intent or (result.is_search_intent and not is_asking_local):
             result.is_inspect_intent = False
         else:
             result.is_inspect_intent = is_insp

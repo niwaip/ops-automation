@@ -537,4 +537,91 @@ describe('ModelProxyController', () => {
       expect(streamClient.chatCompletionStream).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('spreadsheet translation resilience and timeout policy', () => {
+    it('gives spreadsheet_translation internal requests document-generation timeouts', () => {
+      const spreadsheetBody = {
+        request_context: 'spreadsheet_translation',
+        thinking: false,
+        stream_visibility: 'internal',
+        tools: [],
+      };
+      expect(controller.resolveAttemptTimeoutMs(spreadsheetBody)).toBe(120_000);
+      expect(controller.resolveStreamIdleTimeoutMs(spreadsheetBody)).toBe(90_000);
+    });
+
+    it('skips permanent fallback errors to reach a healthy third candidate while capping transient failures at two', async () => {
+      const defaultChatModel = { id: 'uuid-default-chat-1234', name: 'primary-model' };
+      modelService.getPreferredDefaultModel.mockReturnValue(defaultChatModel as any);
+      modelService.getDefaultModel.mockReturnValue(defaultChatModel as any);
+
+      const primaryClient = {
+        chatCompletionStream: jest.fn().mockRejectedValue(Object.assign(new Error('Invalid API key'), { status: 401 })),
+      };
+      // Use a transient primary failure so fallback is permitted.
+      primaryClient.chatCompletionStream.mockRejectedValue(new Error('Client network socket disconnected'));
+      modelService.getClient.mockImplementation((id: string) =>
+        id === defaultChatModel.id ? (primaryClient as any) : null
+      );
+
+      const badModelClient = {
+        chatCompletionStream: jest
+          .fn()
+          .mockRejectedValue(Object.assign(new Error('Model does not exist'), { status: 404 })),
+      };
+      const badKeyClient = {
+        chatCompletionStream: jest
+          .fn()
+          .mockRejectedValue(Object.assign(new Error('Incorrect API key provided'), { status: 401 })),
+      };
+      const healthyFallback = {
+        chatCompletionStream: jest.fn().mockImplementation(async (_opts: any, cb: any) => {
+          cb('Recovered chunk');
+        }),
+      };
+
+      (controller as any).getResilientFallbackClients = jest.fn().mockReturnValue([
+        { id: 'bad-model-name', client: badModelClient },
+        { id: 'bad-api-key', client: badKeyClient },
+        { id: 'healthy-fallback', client: healthyFallback },
+      ]);
+
+      const res1 = createMockResponse();
+      await controller.chatCompletions(
+        validAuthHeader,
+        { model: 'default', stream: true, request_context: 'spreadsheet_translation' },
+        {} as any,
+        res1
+      );
+      expect(badModelClient.chatCompletionStream).toHaveBeenCalledTimes(1);
+      expect(badKeyClient.chatCompletionStream).toHaveBeenCalledTimes(1);
+      expect(healthyFallback.chatCompletionStream).toHaveBeenCalledTimes(1);
+      expect(res1.write).toHaveBeenCalledWith(expect.stringContaining('Recovered chunk'));
+
+      // Transient fallback budget stops after 2 transient failures without trying a 3rd transient candidate.
+      const transient1 = { chatCompletionStream: jest.fn().mockRejectedValue(new Error('aborted')) };
+      const transient2 = { chatCompletionStream: jest.fn().mockRejectedValue(new Error('socket timeout')) };
+      const transient3 = { chatCompletionStream: jest.fn().mockResolvedValue(undefined) };
+
+      (controller as any).getResilientFallbackClients = jest.fn().mockReturnValue([
+        { id: 'transient-1', client: transient1 },
+        { id: 'perm-auth', client: badKeyClient },
+        { id: 'transient-2', client: transient2 },
+        { id: 'transient-3', client: transient3 },
+      ]);
+
+      await expect(
+        controller.chatCompletions(
+          validAuthHeader,
+          { model: 'default', stream: true },
+          {} as any,
+          createMockResponse()
+        )
+      ).rejects.toThrow('Sandbox model execution error: Client network socket disconnected');
+      expect(transient1.chatCompletionStream).toHaveBeenCalledTimes(1);
+      expect(badKeyClient.chatCompletionStream).toHaveBeenCalledTimes(2);
+      expect(transient2.chatCompletionStream).toHaveBeenCalledTimes(1);
+      expect(transient3.chatCompletionStream).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -169,7 +169,9 @@ def should_run_planning_phase(
         (should_plan: bool, is_deliverable_task: bool)
     """
     from .pdf_translation_workflow import fixed_translation
-    if fixed_translation(prompt, session_files, getattr(skill_res, 'deliverables', None)):
+    from .pptx_workflow import fixed_pptx_translation
+    if (fixed_translation(prompt, session_files, getattr(skill_res, 'deliverables', None))
+            or fixed_pptx_translation(prompt, session_files, getattr(skill_res, 'deliverables', None))):
         return False, bool(getattr(skill_res, 'requires_execution', False))
     if not getattr(policy, "thinking", False):
         return False, False
@@ -330,16 +332,18 @@ def build_deliverable_execution_instruction(skill_res: Any, prompt: str = "") ->
     elif getattr(skill_res, "skill_id", None) == "pptx" or (
         getattr(skill_res, "deliverables", None) and any(ext.lower().endswith(".pptx") for ext in skill_res.deliverables)
     ):
+        from .pptx_workflow import pptx_translation_command_hint, PPTX_IN_PLACE_TRANSLATION_CUE_RE
         target_fn = next((d for d in skill_res.deliverables if d.lower().endswith(".pptx")), "presentation.pptx")
-        is_translate_task = bool(re.search(r'翻译|日文版|日语版|英文版|本地化|多语言', prompt or ""))
+        is_translate_task = bool(PPTX_IN_PLACE_TRANSLATION_CUE_RE.search(prompt or ""))
         if is_translate_task:
+            lang_flag, font_flag = pptx_translation_command_hint(prompt)
             return (
                 "【执行与高保真翻译落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
                 "⚠️ 核心硬性红线：严禁从空白重绘画布；严禁模型在对话或脚本中手写长字典！\n"
                 "落盘方式：必须调用 `bash` 工具执行沙箱内置的高性能 OOXML 翻译工具：\n"
-                f"【推荐一键全自动命令】：`python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \"<原始输入文件>.pptx\" \"/workspace/{target_fn}\" --lang ja-JP --font 'Yu Gothic'`\n"
+                f"【推荐一键全自动命令】：`python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \"<原始输入文件>.pptx\" \"/workspace/{target_fn}\" --lang {lang_flag} --font '{font_flag}'`\n"
                 "（该命令会自动完成解包、并发批量翻译与版面自适应打包，一步闭环）；\n"
-                "若需分步执行：`unpack` -> `translate <in.json> <out.json> --lang ja-JP` -> `pack`。\n"
+                f"若需分步执行：`unpack` -> `translate <in.json> <out.json> --lang {lang_flag}` -> `pack`。\n"
                 "4. 最终回复规范：面向最终业务用户提供极简精悍的商务交付汇报（篇幅严格控制在 250~350 字以内），采用标准四段式结构（## ✅ 任务完成标题、### 📋 主要处理内容、### 📦 交付成果物、### 💡 提示与使用建议）；严禁长篇大论罗列每页流水账，严禁输出枯燥的“关键术语对照字典”，严禁向用户堆砌 CLI 参数、测试暗语与 `/workspace/` 内部路径！\n"
                 "⚠️ 第一步必须实际调用 bash 工具执行上述翻译命令完成物理文件落盘！严禁仅输出口头文字！"
             )

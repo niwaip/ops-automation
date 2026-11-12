@@ -1186,41 +1186,13 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertTrue(len(c["name"]) > 0)
             self.assertTrue(len(c["detail"]) > 0)
 
-    def test_scan_personal_knowledge_symlink_defense(self):
-        """[P1] 验证知识库扫描杜绝跟随软链接逃逸至 /knowledge 之外系统文件"""
+    def test_scan_personal_knowledge_does_not_read_local_symlinks(self):
+        """Personal knowledge is read by authenticated node ID, never sandbox directory traversal."""
         from dsh_modules.file_tools import scan_personal_knowledge
-        with tempfile.TemporaryDirectory(dir="/workspace") as tmp_dir:
-            tmp_kn = Path(tmp_dir) / "knowledge"
-            tmp_kn.mkdir()
-
-            # 正常知识库文件
-            normal_file = tmp_kn / "guide.md"
-            normal_file.write_text("这是正常的企业内部操作指引知识文档。", encoding="utf-8")
-
-            # 恶意符号链接：指向 /etc/hosts
-            symlink_hosts = tmp_kn / "evil_hosts_link"
-            try:
-                symlink_hosts.symlink_to("/etc/hosts")
-            except OSError:
-                pass
-
-            # 恶意相对符号链接：指向沙箱外部
-            symlink_parent = tmp_kn / "evil_parent_link"
-            try:
-                symlink_parent.symlink_to("../../etc/hosts")
-            except OSError:
-                pass
-
-            with patch("dsh_modules.config.KNOWLEDGE_DIR", str(tmp_kn)):
-                with patch("dsh_modules.file_tools.KNOWLEDGE_DIR", str(tmp_kn)):
-                    summary = scan_personal_knowledge()
-
-            self.assertIn("guide.md", summary)
-            self.assertIn("正常的企业内部操作指引", summary)
-            self.assertNotIn("evil_hosts_link", summary)
-            self.assertNotIn("evil_parent_link", summary)
-            self.assertNotIn("localhost", summary.lower())
-            self.assertNotIn("127.0.0.1", summary)
+        with patch("dsh_modules.personal_knowledge_search._request", return_value={
+                "source": "personal_workspace", "documents": [], "matchedCount": 0}), \
+             patch.object(Path, "glob", side_effect=AssertionError("local scan")):
+            self.assertEqual(scan_personal_knowledge(auto_match_only=True), "")
 
     def test_send_workspace_file_rejects_directory_and_special(self):
         """[P2] 验证交付物外发协议拒绝目录、未指定文件及特殊文件"""

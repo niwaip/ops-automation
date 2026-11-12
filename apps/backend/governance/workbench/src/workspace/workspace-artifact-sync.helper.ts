@@ -187,34 +187,6 @@ export class WorkspaceArtifactSyncHelper {
 
       if (foundFiles.size === 0) return syncedList;
 
-      const targetWorkspaceDirs = [
-        path.join('/workspace/data/users', userId, 'workspace'),
-        path.join(process.cwd(), 'data/users', userId, 'workspace'),
-        path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
-      ];
-      let activeWorkspaceDir: string | null = null;
-      for (const wd of targetWorkspaceDirs) {
-        if (fs.existsSync(wd)) {
-          activeWorkspaceDir = wd;
-          break;
-        }
-      }
-
-      let targetFolderName = '';
-      if (targetFolderId) {
-        try {
-          const folderNode = await this.prisma.workspaceNode.findUnique({
-            where: { id: targetFolderId },
-            select: { name: true },
-          });
-          if (folderNode?.name) {
-            targetFolderName = folderNode.name;
-          }
-        } catch {
-          // ignore
-        }
-      }
-
       const renderDirs = [
         '/workspace/apps/backend/var/outputs/document-engine/renders',
         path.join(process.cwd(), 'apps/backend/var/outputs/document-engine/renders'),
@@ -326,27 +298,7 @@ export class WorkspaceArtifactSyncHelper {
 
         if (!fileBuffer || fileBuffer.length === 0) continue;
 
-        // 物理同步到沙箱工作区产出成果库 (/workspace/deliverables/)
-        if (physicalPath && activeWorkspaceDir) {
-          const deliverablesDir = targetFolderName
-            ? path.join(activeWorkspaceDir, 'deliverables', targetFolderName)
-            : path.join(activeWorkspaceDir, 'deliverables');
-          if (!fs.existsSync(deliverablesDir)) {
-            try {
-              fs.mkdirSync(deliverablesDir, { recursive: true });
-            } catch {
-              // best-effort
-            }
-          }
-          const targetPersistPath = path.join(deliverablesDir, fileName);
-          if (!fs.existsSync(targetPersistPath)) {
-            try {
-              fs.copyFileSync(physicalPath, targetPersistPath);
-            } catch (copyErr: any) {
-              this.logger.warn(`Failed to copy artifact to deliverables: ${copyErr.message}`);
-            }
-          }
-        }
+        // Archive directly to workspace storage; runtime outputs remain temporary inputs.
 
         const fileSize = BigInt(fileBuffer.length);
         const mimeType = this.guessMimeType(fileName);

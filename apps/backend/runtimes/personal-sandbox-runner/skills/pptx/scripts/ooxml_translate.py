@@ -19,16 +19,29 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from xml.etree import ElementTree as ET
 
-# 命名空间映射
-NS = {
-    'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
-    'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
-    'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
-}
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
-for prefix, uri in NS.items():
-    ET.register_namespace(prefix, uri)
-ET.register_namespace('', 'http://schemas.openxmlformats.org/presentationml/2006/main')
+from pptx_layout_fit import (
+    NS,
+    RPR_CHILD_ORDER,
+    _BILINGUAL_EA_COMPAT_FONTS,
+    align_peer_group_font_sizes,
+    apply_paragraph_text_and_breaks as _apply_paragraph_text_and_breaks,
+    collect_slide_box_metrics as _collect_slide_box_metrics,
+    compute_fit_font_size as _compute_fit_font_size,
+    estimate_text_em_width as _estimate_text_em_width,
+    estimate_wrapped_lines as _estimate_wrapped_lines,
+    hierarchy_shrink_bounds as _hierarchy_shrink_bounds,
+    localize_run_fonts as _localize_run_fonts,
+    register_ooxml_namespaces as _register_ooxml_namespaces,
+    scale_paragraph_font_sizes as _scale_paragraph_font_sizes,
+    sort_rpr_children as _sort_rpr_children,
+    write_xml_preserving_namespaces as _write_xml_preserving_namespaces,
+)
+
+_register_ooxml_namespaces()
 
 
 def unpack_pptx(pptx_path: str, temp_dir: str, out_json_path: str) -> dict:
@@ -78,17 +91,30 @@ def unpack_pptx(pptx_path: str, temp_dir: str, out_json_path: str) -> dict:
             if not runs:
                 continue
 
-            texts = [r.find('a:t', NS).text for r in runs if r.find('a:t', NS) is not None and r.find('a:t', NS).text]
-            full_text = ''.join(texts).strip()
+            parts = []
+            for child in p:
+                local_tag = child.tag.split('}')[-1]
+                if local_tag == 'r':
+                    t_elem = child.find('a:t', NS)
+                    if t_elem is not None and t_elem.text:
+                        parts.append(t_elem.text)
+                elif local_tag == 'br':
+                    parts.append('\n')
+            raw_text = ''.join(parts)
+            leading_ws = raw_text[:len(raw_text) - len(raw_text.lstrip())]
+            full_text = raw_text.strip()
 
             if full_text:
                 key = f"{slide_id}_p{p_idx}"
                 extracted_texts[key] = full_text
-                mapping[key] = {
+                meta_entry = {
                     'rel_file': s_rel_path,
                     'paragraph_index': p_idx,
-                    'original_text': full_text
+                    'original_text': full_text,
                 }
+                if leading_ws:
+                    meta_entry['leading_ws'] = leading_ws
+                mapping[key] = meta_entry
 
     mapping_file = os.path.join(temp_dir, 'ooxml_mapping.json')
     with open(mapping_file, 'w', encoding='utf-8') as f:
@@ -101,8 +127,13 @@ def unpack_pptx(pptx_path: str, temp_dir: str, out_json_path: str) -> dict:
     return extracted_texts
 
 
-def _is_passthrough_text(text: str) -> bool:
-    """判断是否为无需翻译的纯数字、标点符号、URL、英文简称等"""
+_JA_KANA_RE = re.compile(r'[\u3041-\u3096\u30A1-\u30FA]')
+_CJK_OR_KANA_OR_HANGUL_RE = re.compile(r'[\u2E80-\u9FFF\u3041-\u3096\u30A1-\u30FA\uAC00-\uD7AF]')
+_ZH_SIMPLIFIED_HINT_RE = re.compile(r'[云业为从优构图网边鉴权护设备资审联闭环统览据库检识应处开实转软节简录频译议签问线层]')
+
+
+def _is_passthrough_text(text: str, target_lang: str = None) -> bool:
+    """判断是否为无需翻译的纯数字、标点符号、URL、英文简称或已是目标语言的文本"""
     s = text.strip()
     if not s:
         return True
@@ -115,9 +146,17 @@ def _is_passthrough_text(text: str) -> bool:
     # 电话号码
     if re.match(r'^\+?\d[\d\s\-]{6,}\d$', s):
         return True
-    # 纯英文字母短缩写或专有名词（如 AI, LLM, RAG, API, PoC, DX, SASE-XDLP）
-    if re.fullmatch(r'[A-Za-z0-9_\-\s/\.]{1,15}', s) and not re.search(r'[\u4e00-\u9fa5]', s):
+    # 纯英文字母短缩写或专有名词（如 AI, LLM, RAG, API, PoC, DX, SASE-XDLP, OneAI\nAI Gateway）
+    if re.fullmatch(r'[A-Za-z0-9_\-\s/\.]{1,20}', s) and not re.search(r'[\u4e00-\u9fa5]', s):
         return True
+    if target_lang:
+        tl = target_lang.lower()
+        # 目标为日文：已包含平假名/片假名（排除 U+30FB 中黑点）且不含简体特征字的原文直接透传
+        if 'ja' in tl and _JA_KANA_RE.search(s) and not _ZH_SIMPLIFIED_HINT_RE.search(s):
+            return True
+        # 目标为英文：不含任何中日韩文字的纯西文直接透传
+        if 'en' in tl and not _CJK_OR_KANA_OR_HANGUL_RE.search(s):
+            return True
     return False
 
 
@@ -131,7 +170,8 @@ def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_ba
 
     if is_ja:
         lang_name = "地道、专业的商务日语 (Professional Business Japanese)"
-        domain_rules = """3. 【日企商务提案专业规范与汉字优先】：概念与功能词优先采用日企通用的紧凑商务汉字或成熟外来语：
+        domain_rules = """3. 【日企商务提案专业规范与用字纯净度】：概念与功能词优先采用日企通用的紧凑商务日语汉字（新字体）或成熟外来语：
+   - “阿里云” -> 必须写作 “Alibaba Cloud” 或 “アリババクラウド”（严禁音译为“阿裡雲”等中式简繁写法）
    - “数字化转型” -> “DX” 或 “デジタルトランスフォーメーション”
    - “管理平台/底座” -> “管理基盤” / “共通基盤”
    - “业务协同/联动” -> “横断連携” / “シームレスな連携”
@@ -139,8 +179,9 @@ def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_ba
    - “赋能/支持” -> “支援” / “エンパワー”
    - “落地/实施” -> “実用化” / “実装” / “本番適用”
    - “闭环” -> “一気通貫” / “自己完結”
+   - “防护” -> “防御” / “保護”（严禁保留简体字“护”）
    - 通用缩写（AI, LLM, RAG, API, PoC, DX, Fujitsu, SASE-XDLP）保持标准英文字符；
-4. 【文风精悍】：采用精悍专业的商业演示文风，标题与卡片短语优先使用体言结句（名词结尾），说明句统一使用である/だ体或简洁名词短语，杜绝口语与拖沓助词；"""
+4. 【文风精悍与严禁中简字混入】：采用精悍专业的商业演示文风，标题与卡片短语优先使用体言结句（名词结尾）；严禁混入任何中国简体字（如 护/构/图/鉴/权/边/网）或非日语繁体异体字（如 裡）；"""
     elif is_en:
         lang_name = "专业、地道的国际商务英语 (Professional Business English)"
         domain_rules = """3. 【国际企业级技术与咨询规范】：
@@ -156,6 +197,7 @@ def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_ba
    - 通用技术缩写（AI, LLM, RAG, API, PoC, DX, Fujitsu, SASE-XDLP）保持标准大写；
 4. 【文风精悍 (Executive Presentation Style)】：
    - 标题与卡片短语使用 Action-Oriented Title Case 或简练名词短语；
+   - 极短标签、胶囊徽章与表格表头务必精炼（尽量 2–4 个词，省略冗余冠词 a/an/the 及可省动词），避免撑破窄框；
    - 严禁出现冗长繁复的主谓从句，多用精炼的项目短语（Bullet Points）；
    - 严格纯正英文输出，严禁混入任何中文字符或日文假名；"""
     else:
@@ -167,7 +209,7 @@ def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_ba
 
 【核心本地化与排版规范】：
 1. 保持输入 JSON 字典的 Key 键名完全一致，仅将 Value 翻译为地道的目标语言；
-2. 【排版敏感与字符预算控制】：PPT 版面空间极有限，短标签与卡片节点严禁超过原文字符数的 1.2 倍；严禁在单行文本中随意引入换行符；
+2. 【排版敏感、换行保留与字符预算】：PPT 版面空间极有限，短标签与卡片节点保持精炼；若原文不含换行符 `\\n`，严禁擅自引入 `\\n`；若原文自带 `\\n`（表示设计师手动语义分行），请在译文对应断词处保留 `\\n`；
 {domain_rules}
 5. 严格仅返回纯合法 JSON 格式（格式为 {{"key": "译文"}}），严禁包含任何前导解释、注释或 Markdown 代码块标记（严禁写 ```json）。
 
@@ -292,7 +334,7 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     passthrough_translations = {}
 
     for k, text in all_texts.items():
-        if _is_passthrough_text(text):
+        if _is_passthrough_text(text, target_lang):
             passthrough_translations[text] = text
         else:
             if text not in unique_to_translate:
@@ -324,13 +366,15 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     total_batches = len(batches)
     print(f"  ⚡ 智能划分为 {total_batches} 批并发处理 (并发度: {concurrency})...")
 
+    model_name = os.environ.get('DSH_MODEL') or 'default'
     translated_unique_map = {}
     completed_count = 0
+    batch_errors = 0
 
     if batches:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             future_to_batch = {
-                executor.submit(_translate_single_batch_streaming, b, target_lang, api_base, api_key): idx
+                executor.submit(_translate_single_batch_streaming, b, target_lang, api_base, api_key, model=model_name): idx
                 for idx, b in enumerate(batches)
             }
             for future in as_completed(future_to_batch):
@@ -345,6 +389,7 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
                     pct = int(completed_count / total_batches * 100)
                     print(f"  ✓ 本地化处理进度: {completed_count}/{total_batches} ({pct}%)")
                 except Exception as e:
+                    batch_errors += 1
                     print(f"  ⚠️ 批次 {b_idx} 处理异常: {e}")
                     for uid, orig_text in batches[b_idx].items():
                         translated_unique_map[orig_text] = orig_text
@@ -363,21 +408,26 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     is_en = "en" in target_lang.lower()
     is_ja = "ja" in target_lang.lower()
     zh_pattern = re.compile(r'[\u4e00-\u9fa5]')
-    ja_pattern = re.compile(r'[\u3040-\u309F\u30A0-\u30FF]')
+    ja_pattern = _JA_KANA_RE
 
     missed_unique = {}
     for k, orig_text in all_texts.items():
         trans_text = final_output.get(k, orig_text)
-        if _is_passthrough_text(orig_text):
+        if _is_passthrough_text(orig_text, target_lang):
             continue
         needs_sweep = False
         if is_en:
             # 翻译目标为英文时：若译文仍含中文或意外混入了日文假名，视为未翻译完成
-            if (zh_pattern.search(trans_text) or ja_pattern.search(trans_text)) and not _is_passthrough_text(trans_text):
+            if (zh_pattern.search(trans_text) or ja_pattern.search(trans_text)) and not _is_passthrough_text(trans_text, target_lang):
                 needs_sweep = True
         elif is_ja:
-            # 翻译目标为日文时：若中文原样保留且不是同形专有名词
-            if zh_pattern.search(orig_text) and trans_text == orig_text:
+            # 翻译目标为日文时：译文仍含简体特征字，或无假名长汉字串原样保留时触发补译
+            if _ZH_SIMPLIFIED_HINT_RE.search(trans_text) or (
+                zh_pattern.search(orig_text)
+                and trans_text == orig_text
+                and not ja_pattern.search(orig_text)
+                and len(zh_pattern.findall(orig_text)) >= 6
+            ):
                 needs_sweep = True
         else:
             if zh_pattern.search(orig_text) and trans_text == orig_text:
@@ -401,7 +451,7 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
 
         for sw_b in sweep_batches:
             try:
-                sw_res = _translate_single_batch_streaming(sw_b, target_lang, api_base, api_key, model="default", retries=3)
+                sw_res = _translate_single_batch_streaming(sw_b, target_lang, api_base, api_key, model=model_name, retries=3)
                 for uid, trans in sw_res.items():
                     orig_candidates = [t for t, u in missed_unique.items() if u == uid]
                     if orig_candidates and trans != orig_candidates[0]:
@@ -415,11 +465,25 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
                 final_output[k] = translated_unique_map[orig_text]
 
     def _is_untranslated(orig: str, trans: str) -> bool:
-        if _is_passthrough_text(orig):
+        if _is_passthrough_text(orig, target_lang):
             return False
         if is_en:
             return bool(zh_pattern.search(trans) or ja_pattern.search(trans))
+        if is_ja:
+            return bool(
+                _ZH_SIMPLIFIED_HINT_RE.search(trans) or (
+                    zh_pattern.search(orig)
+                    and trans == orig
+                    and not ja_pattern.search(orig)
+                    and len(zh_pattern.findall(orig)) >= 6
+                )
+            )
         return bool(zh_pattern.search(orig) and trans == orig)
+
+    if unique_count > 0 and batch_errors > 0:
+        changed_count = sum(1 for orig in unique_to_translate if translated_unique_map.get(orig, orig) != orig)
+        if changed_count == 0:
+            raise RuntimeError("所有翻译批次调用均失败，未能生成有效译文")
 
     remaining_samples = [
         final_output.get(k, orig) for k, orig in all_texts.items()
@@ -443,38 +507,12 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     return final_output
 
 
-# ECMA-376 DrawingML CT_TextCharacterProperties 子元素严格序列映射
-RPR_CHILD_ORDER = {
-    'ln': 1, 'solidFill': 2, 'gradFill': 3, 'blipFill': 4, 'pattFill': 5,
-    'grpFill': 6, 'effectLst': 7, 'effectDag': 8, 'highlight': 9,
-    'uLnTx': 10, 'uLn': 11, 'uFillTx': 12, 'uFill': 13,
-    'latin': 14, 'ea': 15, 'cs': 16, 'sym': 17,
-    'hlinkClick': 18, 'hlinkMouseOver': 19, 'rtl': 20, 'extLst': 21
-}
-
-
-def _sort_rpr_children(rPr):
-    """
-    根据 ECMA-376 / ISO/IEC 29500-1 DrawingML XSD sequence 严格排序 a:rPr 的子节点，
-    确保 a:latin 始终先于 a:ea 出现，杜绝微软 PowerPoint 报“内容有问题需修复”。
-    """
-    def get_tag_rank(elem):
-        tag = elem.tag.split('}')[-1]
-        return RPR_CHILD_ORDER.get(tag, 99)
-    children = list(rPr)
-    children.sort(key=get_tag_rank)
-    for c in list(rPr):
-        rPr.remove(c)
-    for c in children:
-        rPr.append(c)
-
-
 def pack_pptx(temp_dir: str, translated_json_path: str, output_pptx: str,
               lang: str = None, font_ea: str = None, font_latin: str = None,
               auto_fit: bool = True, shrink_font: bool = True) -> str:
     """
     读取翻译后的 JSON，通过 mapping 靶向写回 XML，设置字体与语言，并打包为新的 PPTX。
-    默认自动启用版面自适应与字号动态保护。
+    默认自动启用版面自适应、西文紧凑字体本地化、同组卡片字号对齐与多样式 run 保真。
     """
     mapping_file = os.path.join(temp_dir, 'ooxml_mapping.json')
     if not os.path.exists(mapping_file):
@@ -491,19 +529,21 @@ def pack_pptx(temp_dir: str, translated_json_path: str, output_pptx: str,
 
     if not lang:
         lang = 'en-US'
-    is_ja = "ja" in lang.lower()
-    is_en = "en" in lang.lower()
-    if font_latin is None:
-        font_latin = "Calibri" if is_en else ("Yu Gothic" if is_ja else "Arial")
-    if font_ea is None:
-        font_ea = "Yu Gothic" if is_ja else ("Calibri" if is_en else "Microsoft YaHei")
+    tl = lang.lower()
+    is_ja = "ja" in tl
+    is_en = "en" in tl
+    is_non_cjk_target = not is_ja and "zh" not in tl and "ko" not in tl
+    explicit_font_latin = font_latin
+    explicit_font_ea = font_ea
+    default_font_latin = explicit_font_latin or ("Calibri" if is_en else ("Yu Gothic" if is_ja else "Arial"))
+    default_font_ea = explicit_font_ea or ("Yu Gothic" if is_ja else ("Calibri" if is_en else "Microsoft YaHei"))
 
     print(f"📥 [3/4] 正在靶向注入译文并应用排版保护 (总项数: {len(mapping)})...")
-    print(f"  ✓ 语言属性: {lang} | 西文字体: {font_latin} | 东亚字体: {font_ea}")
+    print(f"  ✓ 语言属性: {lang} | 西文字体: {explicit_font_latin or f'自适应(默认:{default_font_latin})'} | 东亚字体: {explicit_font_ea or f'保留原样(默认:{default_font_ea})'}")
     if auto_fit:
         print("  ✓ 已启用版面智能自适应保护（支持文本自动弹性缩放与安全换行）。")
     if shrink_font:
-        print("  ✓ 已启用字号动态保护（长文本智能按比例平滑微调）。")
+        print("  ✓ 已启用字号动态保护（同组卡片对齐与长文本按比例微调）。")
 
     file_updates = {}
     for key, meta in mapping.items():
@@ -517,6 +557,7 @@ def pack_pptx(temp_dir: str, translated_json_path: str, output_pptx: str,
                 'p_idx': meta['paragraph_index'],
                 'new_text': trans_text,
                 'original_text': meta.get('original_text', ''),
+                'leading_ws': meta.get('leading_ws', ''),
                 'key': key
             })
 
@@ -525,98 +566,189 @@ def pack_pptx(temp_dir: str, translated_json_path: str, output_pptx: str,
 
     for rel_file, updates in file_updates.items():
         full_path = os.path.join(temp_dir, rel_file)
-        tree = ET.parse(full_path)
-        root = tree.getroot()
-        parent_map = {c: p for p in tree.iter() for c in p}
+        with open(full_path, 'rb') as f:
+            orig_xml_bytes = f.read()
+        root = ET.fromstring(orig_xml_bytes)
+        tree = ET.ElementTree(root)
         paragraphs = root.findall('.//a:p', NS)
-        configured_txbody = set()
+        p_metrics = _collect_slide_box_metrics(root)
 
+        # Precompute normalized text per paragraph index and whether multi-paragraph txBody overflows vertically
+        normalized_new_by_idx = {}
+        new_text_by_p = {}
         for item in updates:
             p_idx = item['p_idx']
-            new_text = item['new_text']
+            if p_idx >= len(paragraphs):
+                continue
+            nt = item['new_text']
+            ot = item['original_text']
+            if '\n' not in ot and '\n' in nt:
+                nt = nt.replace('\r\n', ' ').replace('\n', ' ')
+            normalized_new_by_idx[p_idx] = nt
+            new_text_by_p[paragraphs[p_idx]] = nt
+
+        tx_fits_map = {}
+        for info in set(p_metrics.values()):
+            if info.non_empty_paras <= 1 or info.inner_w <= 0 or info.inner_h <= 0:
+                continue
+            used_h = 0.0
+            min_sz_pt = 12.0
+            for p_el in info.tx_body.findall('a:p', NS):
+                txt = new_text_by_p.get(p_el)
+                if txt is None:
+                    txt = ''.join(t.text or '' for t in p_el.findall('.//a:t', NS)).strip()
+                if not txt:
+                    continue
+                first_r = p_el.find('a:r', NS)
+                rpr = first_r.find('a:rPr', NS) if first_r is not None else None
+                try:
+                    sz_pt = int(rpr.attrib['sz']) / 100.0 if (rpr is not None and 'sz' in rpr.attrib) else 12.0
+                except (TypeError, ValueError):
+                    sz_pt = 12.0
+                min_sz_pt = min(min_sz_pt, sz_pt)
+                used_h += _estimate_wrapped_lines(txt, sz_pt, info.inner_w, compact_latin=is_non_cjk_target) * sz_pt * 1.15
+            tx_fits_map[info.tx_body] = (used_h <= info.inner_h + min_sz_pt * 0.25)
+
+        overflowed_txbodies = set()
+        slide_records = []
+
+        # Pass 1: localize fonts and compute per-paragraph target sizing without mutating sz yet
+        for item in updates:
+            p_idx = item['p_idx']
             orig_text = item['original_text']
             if p_idx >= len(paragraphs):
                 continue
+
+            new_text_core = normalized_new_by_idx[p_idx]
+            leading_ws = item.get('leading_ws', '')
+            restore_ws = (
+                leading_ws
+                and not new_text_core[:1].isspace()
+                and ((not is_non_cjk_target) or set(leading_ws) <= {' '})
+            )
+            final_text = (leading_ws + new_text_core) if restore_ws else new_text_core
+            orig_cmp = (leading_ws + orig_text) if restore_ws else orig_text
 
             p = paragraphs[p_idx]
             runs = p.findall('a:r', NS)
             if not runs:
                 continue
 
-            # 若原文本无换行，清洗模型意外生成的折行符，保持单行紧凑
-            if '\n' not in orig_text and '\n' in new_text:
-                new_text = new_text.replace('\r\n', ' ').replace('\n', ' ')
-
-            # 首个 run 回填完整译文
             first_r = runs[0]
-            first_t = first_r.find('a:t', NS)
-            if first_t is not None:
-                first_t.text = new_text
-
-            # 语言属性与字体保真 (东亚字体与西文字体协同)
             rPr = first_r.find('a:rPr', NS)
             if rPr is None:
                 rPr = ET.Element(f'{{{NS["a"]}}}rPr')
                 first_r.insert(0, rPr)
 
-            if lang:
-                rPr.set('lang', lang)
-                rPr.set('altLang', 'en-US' if not is_en else 'zh-CN')
-            if font_latin:
-                latin = rPr.find('a:latin', NS)
-                if latin is not None:
-                    latin.set('typeface', font_latin)
-                else:
-                    latin_elem = ET.Element(f'{{{NS["a"]}}}latin', {'typeface': font_latin})
-                    rPr.append(latin_elem)
-            if font_ea:
-                ea = rPr.find('a:ea', NS)
-                if ea is not None:
-                    ea.set('typeface', font_ea)
-                else:
-                    ea_elem = ET.Element(f'{{{NS["a"]}}}ea', {'typeface': font_ea})
-                    rPr.append(ea_elem)
+            compact_latin = _localize_run_fonts(
+                rPr,
+                lang=lang,
+                is_en=is_en,
+                is_non_cjk_target=is_non_cjk_target,
+                explicit_font_latin=explicit_font_latin,
+                explicit_font_ea=explicit_font_ea,
+                default_font_latin=default_font_latin,
+                default_font_ea=default_font_ea,
+            )
 
-            # 严格按照 ECMA-376 XSD sequence 归一化子节点顺序，确保 a:latin 先于 a:ea
-            _sort_rpr_children(rPr)
+            box_info = p_metrics.get(p)
+            cur_sz = None
+            new_sz = None
+            floor_sz = 800
+            overflowed = False
+            if shrink_font and orig_text and 'sz' in rPr.attrib:
+                try:
+                    cur_sz = int(rPr.attrib['sz'])
+                    _, floor_sz = _hierarchy_shrink_bounds(cur_sz)
+                    tx_fits = tx_fits_map.get(box_info.tx_body, True) if box_info else True
+                    new_sz, overflowed = _compute_fit_font_size(
+                        cur_sz, orig_text, final_text, box_info, tx_fits, compact_latin=compact_latin
+                    )
+                except ValueError:
+                    cur_sz = new_sz = None
 
-            # 选项：字号智能梯度下调
-            if shrink_font and orig_text and len(new_text) > len(orig_text):
-                ratio = len(new_text) / max(1, len(orig_text))
-                if ratio > 1.25 and 'sz' in rPr.attrib:
-                    try:
-                        cur_sz = int(rPr.attrib['sz'])
-                        scale = min(1.0, (1.0 / ratio) ** 0.5)
-                        new_sz = max(900, int(cur_sz * scale))  # 下限 9pt
-                        if new_sz < cur_sz:
-                            rPr.set('sz', str(new_sz))
-                            shrunk_count += 1
-                    except ValueError:
-                        pass
+            slide_records.append({
+                'p': p,
+                'runs': runs,
+                'first_r': first_r,
+                'orig_text': orig_cmp,
+                'new_text': final_text,
+                'cur_sz': cur_sz,
+                'new_sz': new_sz if new_sz is not None else cur_sz,
+                'floor_sz': floor_sz,
+                'overflowed': overflowed,
+                'box': box_info,
+            })
 
-            # 选项：注入 OOXML 原生 AutoFit 与内边距保护 (文本框级幂等处理)
-            if auto_fit:
-                txBody = parent_map.get(p)
-                if txBody is not None and txBody not in configured_txbody:
-                    configured_txbody.add(txBody)
-                    bodyPr = txBody.find('a:bodyPr', NS)
-                    if bodyPr is not None:
-                        bodyPr.set('wrap', 'square')
-                        for child in list(bodyPr):
-                            if child.tag.endswith('noAutofit') or child.tag.endswith('spAutoFit') or child.tag.endswith('normAutofit'):
-                                bodyPr.remove(child)
-                        autofit_elem = ET.Element(f'{{{NS["a"]}}}normAutofit', {'fontScale': '80000', 'lnSpcReduction': '20000'})
-                        bodyPr.append(autofit_elem)
+        # Pass 1.5: unify font sizes across geometric siblings on the same slide
+        if shrink_font and slide_records:
+            align_peer_group_font_sizes(slide_records)
 
-            # 清空同一段落内其余碎片 runs 中的文本
-            for other_r in runs[1:]:
-                other_t = other_r.find('a:t', NS)
-                if other_t is not None:
-                    other_t.text = ''
+        # Pass 2: rewrite text/breaks while preserving multi-run styles, then finalize fonts & scale once
+        for rec in slide_records:
+            p = rec['p']
+            if rec['overflowed'] and rec['box'] is not None:
+                overflowed_txbodies.add(rec['box'].tx_body)
+
+            first_rpr = rec['first_r'].find('a:rPr', NS)
+            first_latin = first_rpr.find('a:latin', NS) if first_rpr is not None else None
+            first_ea = first_rpr.find('a:ea', NS) if first_rpr is not None else None
+            para_default_latin = (
+                first_latin.attrib.get('typeface', default_font_latin)
+                if first_latin is not None and not explicit_font_latin
+                else default_font_latin
+            )
+            para_default_ea = (
+                first_ea.attrib.get('typeface', default_font_ea)
+                if first_ea is not None and not explicit_font_ea
+                else default_font_ea
+            )
+
+            _apply_paragraph_text_and_breaks(
+                p,
+                rec['runs'],
+                rec['first_r'],
+                rec['new_text'],
+                orig_text=rec['orig_text'],
+            )
+
+            for r_el in p.findall('a:r', NS):
+                rpr_el = r_el.find('a:rPr', NS)
+                if rpr_el is None:
+                    rpr_el = ET.Element(f'{{{NS["a"]}}}rPr')
+                    r_el.insert(0, rpr_el)
+                _localize_run_fonts(
+                    rpr_el,
+                    lang=lang,
+                    is_en=is_en,
+                    is_non_cjk_target=is_non_cjk_target,
+                    explicit_font_latin=explicit_font_latin,
+                    explicit_font_ea=explicit_font_ea,
+                    default_font_latin=para_default_latin,
+                    default_font_ea=para_default_ea,
+                )
+
+            cur_sz = rec['cur_sz']
+            new_sz = rec['new_sz']
+            if cur_sz and new_sz and new_sz < cur_sz:
+                _scale_paragraph_font_sizes(p, new_sz / cur_sz, rec['floor_sz'])
+                shrunk_count += 1
 
             modified_paragraphs += 1
 
-        tree.write(full_path, encoding='utf-8', xml_declaration=True)
+        # 仅对发生溢出的文本框启用原生 AutoFit 弹性缩排保护（并保留原单行 wrap="none" 语义）
+        if auto_fit:
+            for txBody in overflowed_txbodies:
+                bodyPr = txBody.find('a:bodyPr', NS)
+                if bodyPr is not None:
+                    if bodyPr.attrib.get('wrap') != 'none':
+                        bodyPr.set('wrap', 'square')
+                    for child in list(bodyPr):
+                        if child.tag.endswith('noAutofit') or child.tag.endswith('spAutoFit') or child.tag.endswith('normAutofit'):
+                            bodyPr.remove(child)
+                    bodyPr.append(ET.Element(f'{{{NS["a"]}}}normAutofit'))
+
+        _write_xml_preserving_namespaces(tree, orig_xml_bytes, full_path)
 
     if shrink_font and shrunk_count > 0:
         print(f"  ✓ 已对 {shrunk_count} 处版面敏感文本应用紧凑排版优化。")
@@ -725,37 +857,6 @@ def main():
     pack_parser.add_argument("--font", default=None, help="目标东亚字体 (默认自适应)")
     pack_parser.add_argument("--auto-fit", action="store_true", default=True, help="启用原生自动缩放与安全换行")
     pack_parser.add_argument("--shrink-font", action="store_true", default=True, help="文本膨胀时自动下调字号")
-
-    args = parser.parse_args()
-
-    if args.action == "auto":
-        auto_translate_pptx(
-            args.pptx, args.output_pptx,
-            lang=args.lang, font_ea=args.font,
-            batch_size=args.batch_size, concurrency=args.concurrency,
-            temp_dir=args.temp_dir,
-            keep_temp=args.keep_temp
-        )
-
-    elif args.action == "unpack":
-        pptx_path = os.path.abspath(args.pptx)
-        temp_dir = args.temp_dir or os.path.join(os.path.dirname(pptx_path), f".ooxml_{os.path.basename(pptx_path)}")
-        out_json = args.out_json or os.path.join(os.path.dirname(pptx_path), "translation_input.json")
-        unpack_pptx(pptx_path, temp_dir, out_json)
-
-    elif args.action == "translate":
-        in_json = os.path.abspath(args.in_json)
-        out_json = os.path.abspath(args.out_json)
-        translate_texts(in_json, out_json, target_lang=args.lang,
-                        batch_size=args.batch_size, concurrency=args.concurrency)
-
-    elif args.action == "pack":
-        temp_dir = os.path.abspath(args.temp_dir)
-        translated_json = os.path.abspath(args.translated_json)
-        output_pptx = os.path.abspath(args.output_pptx)
-        pack_pptx(temp_dir, translated_json, output_pptx,
-                  lang=args.lang, font_ea=args.font,
-                  auto_fit=args.auto_fit, shrink_font=args.shrink_font)
 
     args = parser.parse_args()
 

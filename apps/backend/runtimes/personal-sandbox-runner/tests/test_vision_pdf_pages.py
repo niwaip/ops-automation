@@ -64,6 +64,10 @@ class VisionPdfPagesTests(unittest.TestCase):
             writer.add_blank_page(width=300, height=300)
         with open(self.pdf_path, "wb") as f:
             writer.write(f)
+        if has_real_pil:
+            # Actual scanned input: native text PDFs no longer open a vision connection.
+            scans = [make_test_image(300, 300) for _ in range(3)]
+            scans[0].save(self.pdf_path, format='PDF', save_all=True, append_images=scans[1:])
 
     def tearDown(self):
         self.tmp_dir.cleanup()

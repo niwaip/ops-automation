@@ -756,57 +756,9 @@ def normalize_search_query(q: str) -> str:
 
 
 def decompose_search_queries(query: str, max_queries: int = 3) -> list[str]:
-    """Builds a small, general-purpose query portfolio from entity, freshness, and task facets."""
-    clean = normalize_search_query(query).strip()
-    subject = re.sub(
-        r'(最新的?|近期的?|最近的?|当前的?|实时的?|新闻|动态|资讯|情况|信息|有哪些|是什么|'
-        r'latest|recent|news|updates?|information)',
-        ' ',
-        clean,
-        flags=re.I,
-    )
-    subject = re.sub(r'[，,。；;：:？?]+', ' ', subject)
-    subject = re.sub(r'\s+', ' ', subject).strip(' 的') or clean
-
-    queries = [clean]
-    is_tech = bool(re.search(
-        r'(插件|扩展|plugin|extension|生态|marketplace|registry|'
-        r'安装方法|安装教程|如何安装|怎么安装|安装指南|install(?:ation)?|setup|quickstart|'
-        r'版本|发布|更新|release|changelog|升级|源码|开源|github|repo|库|sdk|api|框架)',
-        clean,
-        re.I,
-    ))
-    is_trending = bool(re.search(r'(热点|热搜|榜单|排行|趋势|trending|ranking|热门)', clean, re.I))
-
-    if re.search(r'(插件|扩展|plugin|extension|生态|marketplace|registry)', clean, re.I):
-        queries.append(f'{subject} plugins extensions registry GitHub')
-    elif re.search(r'(安装方法|安装教程|如何安装|怎么安装|安装指南|install(?:ation)?|setup|quickstart)', clean, re.I):
-        queries.append(f'{subject} official installation setup quickstart GitHub')
-    elif re.search(r'(版本|发布|更新|release|changelog|升级)', clean, re.I):
-        queries.append(f'{subject} releases changelog GitHub')
-    elif is_trending:
-        queries.append(f'{subject} 实时热点 热门榜单')
-    else:
-        queries.append(f'{subject} latest updates')
-
-    if is_tech:
-        queries.append(f'{subject} official documentation GitHub releases')
-    elif is_trending:
-        queries.append(f'{subject} 热门动态 讨论')
-    else:
-        queries.append(f'{subject} latest news')
-
-    unique = []
-    seen = set()
-    for item in queries:
-        normalized = re.sub(r'\s+', ' ', item).strip()
-        key = normalized.casefold()
-        if normalized and key not in seen:
-            seen.add(key)
-            unique.append(normalized)
-        if len(unique) >= max(1, max_queries):
-            break
-    return unique
+    """Build a bounded portfolio from the task, not generic news suffixes."""
+    from .search_query_plan import build_search_queries
+    return build_search_queries(normalize_search_query(query).strip(), max_queries)
 
 
 def perform_multi_web_search(
@@ -853,7 +805,8 @@ def perform_multi_web_search(
 
     query_plan = decompose_search_queries(query, max_queries=max_queries)
     freshness = extract_query_freshness(query)
-    is_tech = bool(re.search(r'(插件|生态|库|sdk|开源|源码|报错|版本|release|github|install|api|框架)', query, re.I))
+    from .retrieval_policy import is_technical_query
+    is_tech = is_technical_query(query)
     source_policy = 'official-first' if is_tech else 'balanced'
     platform_result = perform_platform_web_search(
         query_plan[0],
@@ -977,81 +930,13 @@ def is_enrichable_content_url(url: str) -> bool:
     return True
 
 
-def enrich_search_context_with_pages(
-    search_context: str,
-    max_pages: int = 3,
-    max_chars_per_page: int = 3_500,
-    deadline: Optional[float] = None,
-) -> str:
-    """Fetch a small, ranked set of result pages for grounded synthesis."""
-    urls = []
-    seen = set()
-    for url in re.findall(r'https?://[^\s)\]>"`]+', search_context or ''):
-        clean_url = url.rstrip('.,;')
-        key = clean_url.rstrip('/').casefold()
-        if key not in seen:
-            seen.add(key)
-            if is_enrichable_content_url(clean_url):
-                urls.append(clean_url)
-
-    is_harness = bool(re.search(r'(?:harness|deepseek|dsh)', (search_context or '').casefold()))
-
-    def page_priority(url: str):
-        normalized = url.rstrip('/').casefold()
-        if is_harness:
-            if normalized == 'https://github.com/deepseek-ai/deepseek-harness':
-                return (0, normalized)
-            if normalized.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
-                return (1, normalized)
-            if 'awesome-' in normalized or 'plugin-registry' in normalized:
-                return (2, normalized)
-            if '/discussions/' in normalized or 'github.com/topics/' in normalized:
-                return (5, normalized)
-            return (3, normalized)
-        # General query: prioritize official documentation, releases, and guides
-        if any(doc in normalized for doc in ('/docs', 'docs.', 'developer.', '/wiki', '/releases')):
-            return (0, normalized)
-        if '/discussions/' in normalized or 'github.com/topics/' in normalized or '/issues/' in normalized:
-            return (5, normalized)
-        if 'github.com' in normalized:
-            return (1, normalized)
-        return (2, normalized)
-
-    selected = sorted(urls, key=page_priority)[:max(1, min(3, max_pages))]
-    if not selected:
-        return search_context
-
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(selected))
-    futures = {
-        executor.submit(fetch_page, url, max_chars_per_page, deadline): url
-        for url in selected
-    }
-    fetched = {}
-    try:
-        remaining = check_deadline(deadline, default_timeout=5.0)
-        for future in concurrent.futures.as_completed(futures, timeout=remaining):
-            url = futures[future]
-            try:
-                content = future.result()
-                if content and not content.startswith(('未能获取', '【安全拦截】', '获取网页内容失败')):
-                    fetched[url] = content[:max_chars_per_page]
-            except Exception:
-                continue
-    except concurrent.futures.TimeoutError:
-        pass
-    finally:
-        for future in futures:
-            future.cancel()
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    if not fetched:
-        return search_context
-    sections = [search_context.rstrip(), '', '【高价值页面正文抓取】']
-    for index, url in enumerate(selected, 1):
-        content = fetched.get(url)
-        if content:
-            sections.extend([f'\n--- 页面 {index}: {url} ---', content])
-    return '\n'.join(sections).strip()
+def enrich_search_context_with_pages(search_context: str, max_pages: int = 3,
+                                    max_chars_per_page: int = 3500,
+                                    deadline: Optional[float] = None) -> str:
+    from .web_page_enrichment import enrich_search_context_with_pages as enrich
+    return enrich(search_context, max_pages, max_chars_per_page, deadline,
+                  fetch_page=fetch_page, check_deadline=check_deadline,
+                  is_enrichable_content_url=is_enrichable_content_url)
 
 
 def perform_platform_web_search(

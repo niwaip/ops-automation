@@ -201,6 +201,49 @@ def mask_file_references(query: str, attached_files: Optional[List[str]] = None)
     return masked_no_quotes, extracted_refs
 
 
+IN_PLACE_TRANSLATE_EXTS = {".pptx", ".ppt", ".docx", ".doc", ".xlsx", ".xlsm", ".pdf"}
+
+
+def is_attachment_in_place_translation(
+    query: str,
+    attached_files: Optional[List[str]] = None,
+) -> bool:
+    """Returns True when the user requests translating an attached office/document file in place,
+    even if the prompt omits repeating the target file extension (e.g. '保持格式不变，翻译成英文').
+    """
+    if not query or not attached_files:
+        return False
+    doc_exts = [Path(f).suffix.lower() for f in attached_files if Path(f).suffix.lower() in IN_PLACE_TRANSLATE_EXTS]
+    if not doc_exts:
+        return False
+
+    lower = query.lower()
+    if re.search(
+        r'(?:只在聊天|只解释|不要生成|不生成文件|不用导出|不导出|无需导出|别生成|不要输出文件|仅回复|只在对话|text[- ]?only)',
+        lower,
+    ):
+        return False
+
+    has_trans_cue = bool(re.search(
+        r'翻译|译成|译为|翻成|本地化|多语言|英文版|英语版|日文版|日语版|中文版|\btranslat(?:e|ion|ing)?\b|\blocaliz(?:e|ation)\b',
+        lower,
+    ))
+    if not has_trans_cue:
+        return False
+
+    has_preserve_or_doc = bool(re.search(
+        r'保持(?:原)?(?:有)?(?:的)?(?:格式|版式)|保留(?:原)?(?:格式|版式)|格式不变|版式不变|全文|整份|整本|文档|文件|幻灯片|演示文稿|preserve\s+(?:the\s+)?format|keep\s+(?:the\s+)?format',
+        lower,
+    ))
+    if not has_preserve_or_doc and re.search(
+        r'这段话|这句话|这一段|这一句|这个词|单词|怎么翻译|如何翻译|是什么意思|什么意思|介绍.{0,6}原理|讲解',
+        lower,
+    ):
+        return False
+
+    return True
+
+
 def extract_source_and_target_artifacts(
     query: str,
     attached_files: Optional[List[str]] = None,
@@ -319,11 +362,19 @@ def extract_source_and_target_artifacts(
             if ext not in target_formats:
                 target_formats.append(ext)
 
+    # 3b. 上传文档附件进行原地翻译但未在文字中重复后缀时（如“保持格式不变，翻译成英文”），继承附件格式
+    if not target_formats and not target_files and is_attachment_in_place_translation(query_clean, attached_files):
+        for af in (attached_files or []):
+            ext_lower = Path(af).suffix.lower()
+            if ext_lower in IN_PLACE_TRANSLATE_EXTS and not is_term_negated(lower, ext_lower):
+                if ext_lower not in target_formats:
+                    target_formats.append(ext_lower)
+
     # 纯只读/查阅保护（核心架构原则：不要用关键字判断！）：
     # 只要用户语句中没有正向物理文件生成动作，目标交付物契约必须严格为空！
     # 彻底杜绝把正在查看、核对、总结的文件误当作目标产物
     from .skill_router import GENERATE_ACTION_PATTERNS
-    has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS)
+    has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS) or is_attachment_in_place_translation(query_clean, attached_files)
     if not has_pos_gen:
         target_formats = []
         target_files = []
@@ -363,7 +414,7 @@ def resolve_task_action_mode(
     if is_text_only_request(query):
         return ACTION_MODE_READ
 
-    has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS)
+    has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS) or is_attachment_in_place_translation(query, attached_files)
     if has_pos_gen:
         src_files, tgt_fmts, tgt_files = extract_source_and_target_artifacts(query, attached_files)
         if tgt_fmts or tgt_files:

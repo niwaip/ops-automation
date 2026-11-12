@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
@@ -338,70 +337,7 @@ export class WorkspaceNoteAiHelper {
         .trim();
       const newFileName = `${safeFileTopic}.md`;
 
-      // 同步重命名与刷新用户沙箱成果库目录 (/workspace/deliverables/)
-      try {
-        const candidateRoots = [
-          path.join('/workspace/data/users', userId, 'workspace'),
-          path.join(process.cwd(), 'data/users', userId, 'workspace'),
-          path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
-        ];
-        for (const cand of candidateRoots) {
-          if (fs.existsSync(cand)) {
-            const deliverablesBase = path.join(cand, 'deliverables');
-            if (!fs.existsSync(deliverablesBase)) {
-              fs.mkdirSync(deliverablesBase, { recursive: true });
-            }
-            const oldDirPath = path.join(deliverablesBase, currentFolderName);
-            const newDirPath = path.join(deliverablesBase, finalFolderName);
-
-            // 若文件夹名称发生更名且旧文件夹存在
-            if (currentFolderName && currentFolderName !== finalFolderName && fs.existsSync(oldDirPath)) {
-              if (!fs.existsSync(newDirPath)) {
-                fs.renameSync(oldDirPath, newDirPath);
-              } else {
-                // 若新文件夹已存在，将旧目录文件迁移入新目录后删除旧目录
-                const files = fs.readdirSync(oldDirPath);
-                for (const f of files) {
-                  const src = path.join(oldDirPath, f);
-                  const dst = path.join(newDirPath, f);
-                  if (!fs.existsSync(dst)) {
-                    fs.renameSync(src, dst);
-                  }
-                }
-                try {
-                  fs.rmdirSync(oldDirPath);
-                } catch {
-                  // ignore
-                }
-              }
-            } else if (!fs.existsSync(newDirPath)) {
-              fs.mkdirSync(newDirPath, { recursive: true });
-            }
-
-            // 写入最新提炼的 Markdown 文件
-            const targetFilePath = path.join(newDirPath, newFileName);
-            fs.writeFileSync(targetFilePath, newBuffer);
-
-            // 若文件名变更，清理旧的残留文件
-            if (
-              params.currentNoteFileName &&
-              params.currentNoteFileName !== newFileName &&
-              fs.existsSync(path.join(newDirPath, params.currentNoteFileName))
-            ) {
-              try {
-                fs.unlinkSync(path.join(newDirPath, params.currentNoteFileName));
-              } catch {
-                // ignore
-              }
-            }
-            break;
-          }
-        }
-      } catch (diskSyncErr: any) {
-        this.logger.warn(
-          `Failed to synchronize refined folder and note to deliverables on disk: ${diskSyncErr.message}`
-        );
-      }
+      // Refinement updates the authoritative storage object; no sandbox mirror is written.
 
       // 提取目录 headings
       const headings = newMarkdownText

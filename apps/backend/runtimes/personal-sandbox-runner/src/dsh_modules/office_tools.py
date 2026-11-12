@@ -121,36 +121,38 @@ def format_unsliced_document_view(
     Formats an un-sliced document view. If length exceeds max_chars, cleanly truncates at line boundary,
     appends a document outline index if available, and gives precise start_line guidance.
     """
-    if len(raw_text) <= max_chars:
-        prefix = f"【{header_label}{extra_meta}】:\n"
+    prefix = f"【{header_label}{extra_meta}】:\n"
+    lines_count = len(raw_text.splitlines()) if raw_text else 0
+    full_prefix = f"【{header_label}（已完整展示全部 {lines_count} 行{extra_meta}）】:\n" if lines_count else prefix
+    if len(full_prefix) + len(raw_text) <= max_chars:
+        return full_prefix + raw_text
+    if len(prefix) + len(raw_text) <= max_chars:
         return prefix + raw_text
 
     lines = raw_text.splitlines()
     total_lines = len(lines)
-    safety_margin = 600
-    content_budget = max(1000, max_chars - safety_margin)
-
-    accumulated = []
-    curr_chars = 0
-    for idx, line in enumerate(lines):
-        line_len = len(line) + 1
-        if accumulated and (curr_chars + line_len > content_budget):
-            break
-        accumulated.append(line)
-        curr_chars += line_len
-
-    displayed_lines = len(accumulated)
-    body = "\n".join(accumulated)
     outline = extract_document_outline(lines)
 
-    meta_str = f"（已展示前 {displayed_lines} 行，共 {total_lines} 行{extra_meta}）"
-    header = f"【{header_label}{meta_str}】:\n"
+    def render(count):
+        header = f"【{header_label}（已展示前 {count} 行，共 {total_lines} 行{extra_meta}）】:\n"
+        hint = (
+            f"\n\n[⚠️ 长文档截断提醒]: 文档文本总长 {len(raw_text)} 字符 / {total_lines} 行，"
+            f"已完整展示前 {count} 行。{outline}"
+            f"\n💡 [接力读取建议]: 推荐下一次调用 read_file(start_line={count + 1}, "
+            f"end_line={min(total_lines, count + 800)})，沿原文件行号继续读取。")
+        return header + '\n'.join(lines[:count]) + hint
 
-    hint = (
-        f"\n\n[⚠️ 长文档截断提醒]: 文档文本总长 {len(raw_text)} 字符 / {total_lines} 行，已完整展示前 {displayed_lines} 行。{outline}"
-        f"\n💡 [接力读取建议]: 可直接指定行号进行切片阅读，推荐下一次调用: read_file(start_line={displayed_lines + 1}, end_line={min(total_lines, displayed_lines + 800)})，或调用 bash 执行 `grep -n '关键词'` 精准定位。"
-    )
-    return header + body + hint
+    # Budget the body and its coverage/continuation metadata together, exactly once.
+    if len(render(0)) > max_chars:
+        outline = ''
+    low, high = 0, len(lines)
+    while low < high:
+        middle = (low + high + 1) // 2
+        if len(render(middle)) <= max_chars:
+            low = middle
+        else:
+            high = middle - 1
+    return render(low)
 
 
 def extract_docx_text(
@@ -202,77 +204,15 @@ def extract_pdf_text(
     p: Path,
     max_chars: int = 30000,
     start_line: Optional[int] = None,
-    end_line: Optional[int] = None
+    end_line: Optional[int] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
+    bbox=None,
+    deadline=None,
 ) -> str:
-    """Extracts text from PDF documents (.pdf) using pypdf and cached text files"""
-    txt_sibling = p.parent / f"{p.name}.txt"
-    if not txt_sibling.exists():
-        txt_sibling = p.parent / f"{p.stem}.txt"
-    if txt_sibling.exists():
-        try:
-            raw_pdf_txt = txt_sibling.read_text(encoding="utf-8", errors="ignore")
-            p_lines = raw_pdf_txt.splitlines()
-            if start_line is not None or end_line is not None:
-                return slice_lines_with_char_limit(
-                    p_lines,
-                    total_lines=len(p_lines),
-                    start_line=start_line,
-                    end_line=end_line,
-                    max_chars=max_chars,
-                    header_label=f"PDF 文档 ({p.name}) 提取文本切片",
-                    line_prefix="L"
-                )
-            return format_unsliced_document_view(
-                raw_pdf_txt,
-                max_chars=max_chars,
-                header_label=f"PDF 文档 ({p.name}) 提取文本"
-            )
-        except Exception:
-            pass
-    try:
-        import pypdf
-        reader = pypdf.PdfReader(str(p))
-        num_pages = len(reader.pages)
-        pages_text = []
-        has_images = False
-        for i, page in enumerate(reader.pages):
-            txt = (page.extract_text() or "").strip()
-            if txt:
-                pages_text.append(f"--- 第 {i+1} 页 ---\n{txt}")
-            if getattr(page, "images", None) and len(page.images) > 0:
-                has_images = True
-        combined_text = "\n\n".join(pages_text).strip()
-        if combined_text:
-            for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-                tp = p.parent / txt_name
-                if not tp.exists():
-                    try:
-                        tp.write_text(combined_text, encoding="utf-8")
-                    except Exception:
-                        pass
-            p_lines = combined_text.splitlines()
-            if start_line is not None or end_line is not None:
-                return slice_lines_with_char_limit(
-                    p_lines,
-                    total_lines=len(p_lines),
-                    start_line=start_line,
-                    end_line=end_line,
-                    max_chars=max_chars,
-                    header_label=f"PDF 文档 ({p.name}) 内容切片",
-                    line_prefix="L"
-                )
-            return format_unsliced_document_view(
-                combined_text,
-                max_chars=max_chars,
-                header_label=f"PDF 文档 ({p.name}) 内容提取",
-                extra_meta=f"，共 {num_pages} 页"
-            )
-        elif has_images:
-            return f"【PDF 文档 ({p.name}) 概要】: 共 {num_pages} 页，文档属于扫描版或图片型 PDF（包含嵌入图片对象，无直接文本层）。"
-        else:
-            return f"【PDF 文档 ({p.name}) 概要】: 共 {num_pages} 页，文档为空或未检测到文字内容。"
-    except Exception as e:
-        return f"PDF 文档解析失败 ({p.name}): {e}"
+    """Compatibility entry point; PDF views and coverage belong to pdf_reading."""
+    from .pdf_reading import read_pdf
+    return read_pdf(p, max_chars, start_line, end_line, start_page, end_page, bbox, deadline)
 
 
 def extract_pptx_text(

@@ -86,12 +86,17 @@ def is_physical_export_negated(text: str) -> bool:
     return bool(EXPORT_NEGATION_RE.search(text))
 
 
-def has_physical_artifact_request(text: str) -> bool:
+def has_physical_artifact_request(text: str, attached_files=None) -> bool:
     if not text or not isinstance(text, str):
         return False
     if is_physical_export_negated(text):
         return False
-    return bool(PHYSICAL_EXPORT_RE.search(text) or VISUAL_EXPORT_RE.search(text))
+    if PHYSICAL_EXPORT_RE.search(text) or VISUAL_EXPORT_RE.search(text):
+        return True
+    if attached_files:
+        from .intent_contract import is_attachment_in_place_translation
+        return is_attachment_in_place_translation(text, attached_files)
+    return False
 
 
 def is_visual_artifact_requested(text: str) -> bool:

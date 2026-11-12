@@ -142,7 +142,7 @@ Token、耗时和请求数只累计一次，响应指纹、结束原因及首轮
 Session Broker 校验运行时标识、依赖指纹和实际镜像 ID，拒绝未构建或依赖清单过期的镜像；
 已停止的旧镜像沙箱会在下次启动时替换，工作区和知识目录挂载保留。运行中或暂停的旧沙箱不会被强制终止，
 需在任务结束并停止后重试。修改镜像后，仅重启原容器不会应用新镜像；销毁旧容器时其可写层会丢失，
-持久文件应保存到 `/workspace` 或 `/knowledge`。
+运行文件保存在 `/workspace`；个人资料通过界面“保存到个人空间”统一归档。沙箱通过鉴权 API 读取资料原件，不再维护 `/workspace/deliverables` 镜像。
 
 用户明确要求 PPT、Word、Excel 或 PDF 时，任务契约保留对应目标格式，即使技能准入转通用能力执行。
 明确要求 HTML 演示稿时保留 HTML；后续明确切换格式时以新要求为准。发送 HTML 附件不能让缺失的 PPTX 契约通过。
@@ -159,7 +159,7 @@ bash 工具使用 Bash 的 `pipefail` 传播流水线失败，`pip ... | tail -5
   - **模型网关**：通过 `ai-orchestrator` 提供的内部安全模型代理（`http://ops-ai-orchestrator:3007/ai/proxy/v1`）与大语言模型通信。
 - **运行环境空间**：
   - **工作区**：`/workspace`（用户主工作目录，读写可用，持久化挂载）
-  - **知识库**：`/knowledge`（用户个人空间与参考知识库，读写可用，持久化挂载）
+  - **个人资料库**：个人空间的 WorkspaceNode 与 storagePath 原件；通过 `/ai/proxy/v1/knowledge/search`、`read` 鉴权访问，更新/删除即时生效。`/knowledge` 仅保留技能等运行数据，不再作为资料检索源
   - **技能库**：`/opt/dsh/skills`（系统认证技能库，集中只读）与 `/knowledge/skills`（用户自定义技能库）
   - **插件库**：`/opt/dsh/plugins`（系统认证插件目录，集中只读）
 
@@ -270,6 +270,8 @@ dsh exec python3 -c "import docx; print(docx.__version__)"
 | `--web-search` | `-s` | `True` | 实时联网检索（默认开启） |
 | `--no-web-search` |  | `False` | 为本次运行显式关闭联网检索 |
 
+个人资料与网页检索使用统一策略：公开技术部署、版本和选型问题可主动前置查网；用户的“不联网 / 只用个人资料”优先。首轮按任务覆盖筛选至多 Top 5，无固定来源配额，后续可按证据缺口继续读取和检索。来源优先级按事实类型决定，安装命令/配置须有本轮资料支持。规则、边界和审计字段见 [个人资料与混合检索](../../../../docs/runbook/personal-knowledge.md)。
+
 联网检索采用统一的分层链路：沙箱只负责实体、时效和来源意图拆分，随后通过签名虚拟令牌调用平台搜索网关；Tavily、Exa、Firecrawl 等真实凭据始终保留在控制面。平台会对最多 3 个扩展查询并行检索、按 URL 去重，并在 `official-first` 策略下优先官方文档、开发者站点和 GitHub/GitLab 来源。供应商返回空结果属于软失败，会继续尝试下一通道。平台不可用或未返回有效结果时，仍保留 `modsearch`、Bing HTML、DuckDuckGo 以及微博/B站/天气专用接口作为免 Key 兜底。
 | `--research` | `-r` | `False` | 显式激活深度研报调研技能规范 |
 | `--model` | `-m` | `None` | 指定模型标识（缺省时使用平台默认模型） |
@@ -320,10 +322,10 @@ dsh exec python3 -c "import docx; print(docx.__version__)"
 1. **工作区目录边界严格受限（Directory Confinement & Anti-Traversal）**：
    - 文件工具（`read_file`、`patch_file`、`send_file`、`inspect_image`）经由 `resolve_sandboxed_path` 严格锁定根边界：
      - 用户工作区：`/workspace`（完全读写）
-     - 个人知识库：`/knowledge`（完全读写）
+     - 自定义技能与运行数据：`/knowledge`（用户隔离，个人资料统一从个人空间接口读取）
      - 只读系统技能库：`/opt/dsh`（只读，禁写）
      - 临时脚本目录：`/tmp`（仅限执行临时脚本，严禁作为外发交付物）
-   - 所有路径解析均执行 `.resolve()` 解析真实物理路径，`scan_personal_knowledge()` 严格限定扫描解析路径位于 `/knowledge` 内部，图片插件及外发接口严格校验普通文件类型与工作区边界，彻底杜绝 `..` 目录穿越、符号链接越权逃逸至系统目录（如 `/etc`、`/root`、`/proc`）。
+   - 所有路径解析均执行 `.resolve()` 解析真实物理路径，`scan_personal_knowledge()` 仅通过绑定用户身份的网关读取个人空间原件，不扫描本地镜像；图片插件及外发接口严格校验普通文件类型与工作区边界，彻底杜绝 `..` 目录穿越、符号链接越权逃逸至系统目录（如 `/etc`、`/root`、`/proc`）。
 2. **防 Prompt Injection 与命令隔离原则**：
    - 严禁将普通 markdown ```bash 或 ```python 文本代码块自动推断升级为系统命令执行；
    - 工具执行必须由模型原生 Function Calling、结构化 DSML 或显式工具调用标签触发；

@@ -363,8 +363,7 @@ def resolve_sandboxed_path(
 from .personal_knowledge_search import (
     get_last_scanned_knowledge_files,
     scan_personal_knowledge,
-    _extract_knowledge_query_keywords,
-    _get_file_type_tier_and_score,
+    read_personal_knowledge,
 )
 
 
@@ -529,6 +528,10 @@ def inspect_image(
     pdf_page_meta = ""
 
     if suffix == ".pdf":
+        from .visual_reading_policy import pdf_visual_allowed
+        if not pdf_visual_allowed(p, os.environ.get('DSH_USER_REQUEST', '')):
+            return (f"【PDF 文本优先】{p.name} 未启用视觉读取；请使用 read_file 按行分段读取原生文本。"
+                    "当前调用未发送图片或调用视觉模型。")
         try:
             import io
             from PIL import Image
@@ -587,7 +590,8 @@ def inspect_image(
 
             # 限制单次拼接最多 4 页，避免超长条带拉伸导致的 ViT 超时与文字模糊
             if len(target_pages) > 4:
-                target_pages = target_pages[:4]
+                return ("【PDF 分页范围超限】单次视觉读取最多4页，本次未读取请求范围。"
+                        "请拆成每批不超过4页的调用，并按实际返回页码连续读取。")
 
             # 3. 光栅化渲染指定页
             rendered_images = []
@@ -710,6 +714,8 @@ def inspect_image(
         from .model_image_transport import request_image_completion
         analysis_prompt = prompt.strip() if prompt and prompt.strip() else (
             "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。")
+        if pdf_page_meta:
+            analysis_prompt = pdf_page_meta + '\n只分析本次实际提供的页面，不推测其他页面。\n' + analysis_prompt
         from .runtime_policy import RuntimePolicy
         target_model = model_name or os.environ.get("DSH_MODEL") or "default"
         resp_data = request_image_completion(image_bytes, mime, analysis_prompt, target_model,
@@ -782,9 +788,14 @@ def read_workspace_file(
     model_name: Optional[str] = None,
     prompt: Optional[str] = None,
     sheet_name: Optional[str] = None,
-    cell_range: Optional[str] = None
+    cell_range: Optional[str] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
+    bbox=None,
 ) -> str:
     """Reads and extracts text locally from workspace or knowledge files (.docx, .xlsx, .txt, .md, .json, .py, .pdf) without calling any LLM."""
+    if str(file_path).startswith('personal-knowledge://'):
+        return read_personal_knowledge(file_path, max_chars, start_line, end_line, deadline)
     p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
     if err:
         return err
@@ -794,6 +805,8 @@ def read_workspace_file(
         return f"读取失败：目标不是普通文件: {file_path}"
 
     suffix = p.suffix.lower()
+    if suffix != '.pdf' and any(v is not None for v in (start_page, end_page, bbox)):
+        return '【读取参数错误】start_page/end_page/bbox 仅适用于 PDF'
 
     # 全局前置检测：若文件被 Microsoft Information Protection (MIP/RMS) 企业安全加密封装
     try:
@@ -830,7 +843,8 @@ def read_workspace_file(
 
     # 3. PDF 文档 (.pdf) 原生本地文本提取（不在此处隐式调用视觉大模型）
     elif suffix == ".pdf":
-        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line,
+                                start_page=start_page, end_page=end_page, bbox=bbox, deadline=deadline)
 
     # 4. PPT 文档 (.pptx) 原生提取
     elif suffix == ".pptx":

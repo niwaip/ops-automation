@@ -10,3 +10,5 @@ export * from './storage/storage-driver.interface';
 export * from './workspace-process-archive.service';
 export * from './workspace-artifact-sync.helper';
 export * from './workspace-note-ai.helper';
+export * from './personal-knowledge.service';
+export * from './personal-knowledge-relevance';

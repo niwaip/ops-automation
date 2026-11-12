@@ -1,7 +1,7 @@
 """XLSX task routing and workflow management.
 
 Selects the native OOXML in-place mutation and translation engine for existing
-Excel workbooks to guarantee 100% preservation of dropdown lists (data validations),
+Excel workbooks to preserve dropdown lists (data validations),
 conditional formattings, formulas, freeze panes, styles, and dimensions.
 """
 
@@ -39,25 +39,14 @@ def is_xlsx_in_place_transform_task(prompt: str, skill: Any, files: Optional[Lis
 
 
 XLSX_IN_PLACE_TRANSLATE_INSTRUCTION = """
-【Excel/XLSX 原地无损翻译与版式保留执行规范】：
-1. 检测到输入为既有 Excel 工作簿，且任务要求【保持格式不变 / 翻译 / 原地转换】。
-2. ⚠️ 重大红线：严禁使用 `openpyxl.Workbook()` 从头新建空白工作簿并手动拷贝单元格！
-   从头新建会导致原工作簿的以下底层 OOXML 结构 100% 丢失：
-   - 数据验证下拉框 (ws.data_validations): 所有下拉选项与输入规则全部丢失；
-   - 条件格式 (ws.conditional_formatting): 所有动态高亮与预设颜色丢失；
-   - 视图与冻结窗格 (freeze_panes): 表头锁定丢失；
-   - 复杂样式、行高、列宽与主题配置全部丢失。
-3. ✅ 必须通过 bash 直接调用已验证的原生 OOXML 原地流式翻译引擎（严禁自行编写 Python 脚本遍历或修改单元格）：
-   python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto <输入文件.xlsx> <输出文件.xlsx> --lang <zh-CN|ja-JP|en-US...>
-   该引擎直接操作 xl/sharedStrings.xml、xl/workbook.xml 与工作表数据验证，100% 保持单元格坐标、样式、公式、条件格式与下拉验证，并自动运行 recalc.py 刷新公式缓存。一键闭环完成。
-4. 交付总结规范（面向用户的四段式业务交付，篇幅控制在 200~300 字以内）：
-   - ✅ 任务完成状态（1 句话）：明确告知用户 Excel 电子表格已成功完成高质量本地化；
-   - 📋 主要处理内容（2~3 句话）：清晰概述翻译覆盖的业务模块与数据范围（例如：完整翻译了表头说明、各清单明细条目、选项判定规则及汇总统计区域）；
-   - 📦 交付成果物（2~3 句话）：说明生成的 Excel 文件名称，确认原表格的数据验证下拉选择框、条件格式动态高亮规则与计算公式已 100% 完整保留并生效；
-   - 💡 提示与使用建议（1~2 句话）：温和提示用户可直接点击下方文件卡片一键下载查阅，如有专属简称可在 Excel 中灵活微调；
-   - 🚫 客户交互红线禁令：
-     * 严禁输出“关键术语对照字典”或罗列“词汇A -> 词汇B”对照列表（用户需要的是业务交付成果说明，不是字典！）；
-     * 严禁向客户暴露任何底层技术术语，如“OOXML”、“XML 级注入”、“sharedStrings”、“LibreOffice”等；
-     * 严禁向客户汇报内部执行统计数字（如“全量 140 处”、“104 处去重”）；
-     * 严禁在回复中泄露 /workspace/ 等内部容器物理路径，用户界面会自动挂载生成的文件卡片。
+【已有 Excel 翻译执行规范】
+保留原工作簿结构，使用已安装的原生翻译引擎，不能新建空工作簿逐格搬运。
+整本 XLSX 翻译由运行时固定工作流负责，不需要自由文本规划。
+备用命令：python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto <输入.xlsx> <输出.xlsx> --lang <目标语言> --no-recalc
+引擎覆盖单元格、富文本段、工作表名称、下拉选项、可编辑图形和批注文本，
+并同步公式的工作表引用与文本判定常量。图片内文字保留原样。
+译文与原生结构验收通过后才能发布；失败保留检查点，不能返回旧文件冒充本轮结果。
+保留原生部件及缓存，设置 Excel 打开时重算；不能把文件生成说成原生计算引擎验证通过。
+回复简明说明完成状态、实际文件名和已执行的核验，按真实证据说明限制。
+不能声称未经验证的“100%保真”“公式已生效”或“全文翻译准确”。
 """

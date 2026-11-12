@@ -56,5 +56,45 @@ TypeError: ToolResult._error_result() missing 1 required positional argument: 'm
       expect(res?.friendlyError).not.toContain('provenance');
       expect(res?.friendlyError).toContain("ToolResult._error_result() missing 1 required positional argument: 'message'");
     });
+
+    it('classifies stream terminated during artifact task as SANDBOX_GENERATION_TIMEOUT', () => {
+      const res = classifyPersonalSandboxError({
+        message: '保持格式不变，翻译成中文的excel',
+        errMsg: 'terminated',
+        recentHistory: [],
+        sessionAttachedFiles: ['System_Security_Plan_Sheets_FCH.xlsx'],
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.eventData.code).toBe('SANDBOX_GENERATION_TIMEOUT');
+      expect(res?.eventData.retryable).toBe(true);
+      expect(res?.friendlyError).not.toContain('断点进度安全保留');
+      expect(res?.eventData).not.toHaveProperty('artifactCreated');
+    });
+  });
+
+  it('reports the actual PDF reading failure without inventing completed web search or a checkpoint', () => {
+    const res = classifyPersonalSandboxError({
+      message: '查看和归纳内容',
+      errMsg: '⚡ [Harness Tool Call] 正在调用工具: vision_inspect\n❌ [DeepSeek Harness 超时]: timed out',
+      recentHistory: [],
+      sessionAttachedFiles: ['report.pdf'],
+    });
+    expect(res?.eventData.code).toBe('SANDBOX_DOCUMENT_ANALYSIS_TIMEOUT');
+    expect(res?.eventData.stage).toBe('visual_reading');
+    expect(res?.eventData).not.toHaveProperty('searchCompleted');
+    expect(res?.executionTrace?.executed).toBe(true);
+    expect(res?.friendlyError).toContain('图像识别阶段');
+    expect(res?.friendlyError).not.toContain('联网检索已经完成');
+    expect(res?.friendlyError).not.toContain('断点进度安全保留');
+  });
+
+  it('does not infer successful retrieval from an explicit search request', () => {
+    const res = classifyPersonalSandboxError({
+      message: '搜索今天的新闻', errMsg: 'timed out', recentHistory: [], sessionAttachedFiles: [],
+    });
+    expect(res?.eventData.code).toBe('SANDBOX_SEARCH_SYNTHESIS_TIMEOUT');
+    expect(res?.eventData).not.toHaveProperty('searchCompleted');
+    expect(res?.friendlyError).not.toContain('检索已经完成');
   });
 });

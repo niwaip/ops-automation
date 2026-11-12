@@ -7,10 +7,11 @@ import { DebugSettingsModule } from '../debug-settings/debug-settings.module';
 import { ControlPlaneClientModule } from '../../client/control-plane-client.module';
 import { ModelInvocationTelemetryService } from './model-invocation-telemetry.service';
 import { SandboxSearchProxyController } from './sandbox-search-proxy.controller';
+import { SandboxKnowledgeProxyController } from './sandbox-knowledge-proxy.controller';
 
 @Module({
   imports: [DebugSettingsModule, ControlPlaneClientModule],
-  controllers: [ModelController, ModelProxyController, SandboxSearchProxyController],
+  controllers: [ModelController, ModelProxyController, SandboxSearchProxyController, SandboxKnowledgeProxyController],
   providers: [ModelService, ModelOcrService, ModelInvocationTelemetryService],
   exports: [ModelService, ModelOcrService, ModelInvocationTelemetryService],
 })

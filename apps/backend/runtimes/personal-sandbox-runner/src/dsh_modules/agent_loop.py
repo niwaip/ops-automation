@@ -202,11 +202,19 @@ def run_agent_loop(
         return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
                                messages=messages, execution_evidence=evidence)
     from .pdf_translation_workflow import fixed_translation, run_fixed_translation
+    from .pptx_workflow import fixed_pptx_translation, run_fixed_pptx_translation
     session_files = [name for name in os.getenv('DSH_SESSION_ATTACHMENTS', '').split(',') if name]
     if (not is_guide_intent and any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
             and fixed_translation(last_user_prompt, session_files, expected_deliverables)):
         from .config import SKILL_DIR
         result = run_fixed_translation(last_user_prompt, session_files, expected_deliverables,
+            WORKSPACE_DIR, SKILL_DIR, start_ts, deadline, telemetry)
+        return AgentLoopResult(final_text=result.final_text, outbound_files=result.outbound_files,
+            telemetry=telemetry, messages=messages, execution_evidence=result.execution_evidence)
+    if (not is_guide_intent and any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
+            and fixed_pptx_translation(last_user_prompt, session_files, expected_deliverables)):
+        from .config import SKILL_DIR
+        result = run_fixed_pptx_translation(last_user_prompt, session_files, expected_deliverables,
             WORKSPACE_DIR, SKILL_DIR, start_ts, deadline, telemetry)
         return AgentLoopResult(final_text=result.final_text, outbound_files=result.outbound_files,
             telemetry=telemetry, messages=messages, execution_evidence=result.execution_evidence)
@@ -306,10 +314,17 @@ def run_agent_loop(
         )
     )
     task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect and not mcp_readonly_skill_id else MAX_AGENT_ROUNDS_HARD_CEILING
+    if is_inspect_intent and not is_generate_intent and not spreadsheet_analysis_required:
+        # Native document pagination uses its own bounded budget, not the
+        # spreadsheet computation ceiling (which previously cut 11 reads to 8).
+        task_ceiling = min(MAX_AGENT_ROUNDS_HARD_CEILING, 12)
     if mcp_readonly_skill_id:
         task_ceiling = min(task_ceiling, 12)
     max_rounds = min(max_rounds, task_ceiling)
     initial_max_rounds = max_rounds
+
+    from .deployment_evidence_review import DeploymentEvidenceReview
+    deployment_review = DeploymentEvidenceReview(last_user_prompt, active_tools)
 
     round_idx = 0
     consecutive_tool_errors = 0
@@ -426,6 +441,14 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
+            feedback, reply_text = deployment_review.review(reply_text, execution_evidence,
+                can_retry=round_idx < min(task_ceiling - 1, initial_max_rounds + 2), telemetry=telemetry)
+            if feedback:
+                messages.extend([{'role': 'assistant', 'content': reply_text},
+                                 {'role': 'user', 'content': feedback}])
+                max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
+                round_idx += 1
+                continue
             if comparison_required and consecutive_comparison_errors < 2:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
                 telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
@@ -1121,6 +1144,16 @@ def run_agent_loop(
         )
     except Exception as e:
         logger.warning("Delivery reconciliation error in agent loop: %s", e)
+
+    try:
+        from .pptx_workflow import audit_pptx_workspace_deliverables
+        pptx_warning = audit_pptx_workspace_deliverables(
+            WORKSPACE_DIR, start_ts, last_user_prompt, outbound_files, telemetry
+        )
+        if pptx_warning and pptx_warning not in (final_text or ''):
+            final_text = pptx_warning + (final_text or '')
+    except Exception as e:
+        logger.warning("PPTX delivery quality gate error in agent loop: %s", e)
 
     # Final success claims must be checked even when intent routing or nudge budgets skipped guards.
     missing_claims = [] if (rejected and not outbound_files) else detect_missing_claimed_artifacts(

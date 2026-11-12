@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-OOXML Excel (XLSX) 高保真翻译与多语言替换引擎
-通过直接解包与操作 Office Open XML (SpreadsheetML) 结构，实现 100% 格式无损的 Excel 文本提取、
-AI 去重流式并发翻译与原地回填打包。
+"""Translate native XLSX text while preserving workbook package structure.
 
-保证：
-1. 单元格样式、边框、底纹背景、字体粗细与字号 100% 原样保留；
-2. 数据验证下拉框 (Data Validations / 下拉列表) 100% 完整保留并支持选项本地化；
-3. 条件格式 (Conditional Formatting / 预设高亮规则) 100% 原样保留；
-4. 视图属性、冻结窗格 (Freeze Panes)、活动标签页 100% 原样保留；
-5. 动态计算公式 (<f>) 与引用关系 100% 原样保留，并自动驱动 LibreOffice 完成无头重算缓存校验。
+Shared and inline strings, styled runs, editable drawing/comment text and formula
+literals are translated in place. The owned workflow validates content coverage
+and native structures before publishing. Formula caches remain from the source;
+Excel refreshes them on open. Images and visual/semantic fidelity need separate review.
 """
 
 import os
@@ -20,13 +15,22 @@ import shutil
 import zipfile
 import argparse
 import re
-import time
 import subprocess
-import urllib.request
-import urllib.error
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
+import html
+from xml.sax.saxutils import escape
 from xml.etree import ElementTree as ET
+from pathlib import Path
+from xlsx_font_normalization import apply_font_localization
+from xlsx_formula_references import (
+    apply_protected_prefix,
+    extract_referenced_prefixes,
+    extract_validation_code_prefixes,
+    split_protected_prefix,
+    update_package_references,
+)
+from xlsx_translation_client import translate_batch as _translate_single_batch_streaming
+from xlsx_native_text import extract_native_text, pack_native_text
 
 # SpreadsheetML 核心命名空间
 NS = {
@@ -61,8 +65,8 @@ def _is_passthrough_text(text: str) -> bool:
     # URL 或 网址
     if re.match(r'^(?:https?://|www\.)', s, re.I):
         return True
-    # 纯英文字母短缩写、单元格编号或特定符号代码（如 C1, C2, N1, N2, IT, SASE, API, AWS, GCP, Azure）
-    if re.fullmatch(r'[A-Za-z0-9_\-\s/\.]{1,15}', s) and not re.search(r'[\u4e00-\u9fa5\u3040-\u30ff]', s):
+    # 纯英文字母短缩写、单元格编号或带通配符的特定符号代码（如 C1, C2, N1, N*, Y*, IT, SASE, API）
+    if re.fullmatch(r'[A-Za-z0-9_\-\s/\.\*\?]{1,15}', s) and not re.search(r'[\u4e00-\u9fa5\u3040-\u30ff]', s):
         return True
     return False
 
@@ -126,7 +130,7 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
     if os.path.exists(temp_dir):
         try:
             for entry in os.listdir(temp_dir):
-                if entry.endswith('.cache.json') or entry == '.translation_cache.json':
+                if entry.endswith('.cache.json') or entry in ('.translation_cache.json', '.translation_cache.meta.json'):
                     entry_path = os.path.join(temp_dir, entry)
                     if os.path.isfile(entry_path):
                         with open(entry_path, 'r', encoding='utf-8') as cf:
@@ -154,6 +158,10 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
 
     extracted_texts = {}
     mapping = {}
+    protected_prefix_pool = (
+        extract_referenced_prefixes(temp_dir)
+        | extract_validation_code_prefixes(temp_dir)
+    )
 
     # 1. 提取 xl/sharedStrings.xml 中的共享字符串
     sst_path = os.path.join(xl_dir, 'sharedStrings.xml')
@@ -170,14 +178,20 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
             if direct_t is not None:
                 text = direct_t.text or ""
                 key = f"sst_{idx}"
-                mapping[key] = {
+                meta = {
                     "type": "sst",
                     "si_idx": idx,
                     "has_runs": False,
                     "orig_text": text
                 }
                 if text.strip():
+                    pref, _ = split_protected_prefix(
+                        text.strip(), protected_prefix_pool, is_data_validation=False
+                    )
+                    if pref:
+                        meta["protected_prefix"] = pref
                     extracted_texts[key] = text.strip()
+                mapping[key] = meta
             elif runs:
                 text_parts = []
                 for r in runs:
@@ -193,8 +207,16 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
                     "run_count": len(runs),
                     "orig_text": full_text
                 }
-                if full_text.strip():
-                    extracted_texts[key] = full_text.strip()
+                run_keys = []
+                for run_index, run in enumerate(runs):
+                    text = run.find(f'{{{main_ns}}}t')
+                    value = text.text or '' if text is not None else ''
+                    run_key = f'{key}_run_{run_index}'
+                    run_keys.append(run_key)
+                    if value.strip():
+                        extracted_texts[run_key] = value.strip()
+                        mapping[run_key] = {'type': 'rich_text_run', 'orig_text': value}
+                mapping[key]['run_keys'] = run_keys
 
     # 2. 提取 xl/workbook.xml 中的工作表名称
     wb_path = os.path.join(xl_dir, 'workbook.xml')
@@ -239,13 +261,19 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
                                     clean_opt = opt.strip()
                                     if clean_opt and not _is_passthrough_text(clean_opt):
                                         key = f"dv_{fname}_{dv_idx}_{opt_idx}"
-                                        mapping[key] = {
+                                        meta = {
                                             "type": "data_validation",
                                             "rel_file": f"xl/worksheets/{fname}",
                                             "dv_idx": dv_idx,
                                             "opt_idx": opt_idx,
                                             "orig_text": clean_opt
                                         }
+                                        pref, _ = split_protected_prefix(
+                                            clean_opt, protected_prefix_pool, is_data_validation=True
+                                        )
+                                        if pref:
+                                            meta["protected_prefix"] = pref
+                                        mapping[key] = meta
                                         extracted_texts[key] = clean_opt
 
                 # 内联字符串 (inlineStr)
@@ -255,16 +283,23 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
                     t_elem = c.find(f'.//{{{NS["main"]}}}is/{{{NS["main"]}}}t')
                     if t_elem is not None and t_elem.text and t_elem.text.strip():
                         key = f"inline_{fname}_{r_coord}"
-                        mapping[key] = {
+                        meta = {
                             "type": "inline_string",
                             "rel_file": f"xl/worksheets/{fname}",
                             "cell_coord": r_coord,
                             "orig_text": t_elem.text
                         }
+                        pref, _ = split_protected_prefix(
+                            t_elem.text.strip(), protected_prefix_pool, is_data_validation=False
+                        )
+                        if pref:
+                            meta["protected_prefix"] = pref
+                        mapping[key] = meta
                         extracted_texts[key] = t_elem.text.strip()
             except Exception as e:
                 print(f"  ⚠️ 解析工作表 {fname} 数据验证时跳过: {e}")
 
+    extract_native_text(temp_dir, mapping, extracted_texts)
     mapping_file = os.path.join(temp_dir, 'ooxml_mapping.json')
     with open(mapping_file, 'w', encoding='utf-8') as f:
         json.dump(mapping, f, ensure_ascii=False, indent=2)
@@ -276,317 +311,24 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
     return extracted_texts
 
 
-def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_base: str, api_key: str,
-                                      model: str = "default", retries: int = 2) -> dict:
-    """流式单批次调用 LLM 翻译，自带心跳防超时与格式解析容错"""
-    is_zh = any(code in target_lang.lower() for code in ["zh", "chinese", "cn"])
-    is_ja = any(code in target_lang.lower() for code in ["ja", "japanese", "jp"])
-    is_en = any(code in target_lang.lower() for code in ["en", "english", "us", "uk"])
-
-    if is_zh:
-        lang_name = "地道、专业的中文字符与行业标准表达 (Professional Simplified Chinese)"
-        domain_rules = """3. 【专业术语与规范】：
-   - 云计算与企业 IT 安全规范对照：
-     * クラウド設定・運用セキュリティチェックリスト -> 云计算设置运营安全检查清单
-     * 確認事項 -> 确认事项
-     * 補足説明 -> 补充说明
-     * 番号 -> 编号
-     * 適合 / 不適合 -> 适合 / 不适合
-     * 選択 -> 选择
-     * その他 -> 其他
-     * テナント管理者 -> 租户管理员
-     * ユーザー管理台帳及び棚卸しの記録 -> 用户管理台账及盘点记录
-   - 常见的选项代号（如 C1, C2, N1, N2 等）保持英文与数字原样；
-4. 【排版严谨】：保留原句的标点符号，严禁随意换行；"""
-    elif is_ja:
-        lang_name = "地道、专业的商务与法律日语 (Professional Business & Legal Japanese)"
-        domain_rules = """3. 【日企商务与法务规范】：
-   - 采用标准日本合同/规范文风（である体/だ体，条文使用「〜ものとする」「〜とする」）；
-   - 适合/不适合对应「適合」/「不適合」，选择对应「選択」，其他对应「その他」；
-   - 通用技术缩写（AI, LLM, API, AWS, SASE）保持标准英文字符；
-4. 【排版严谨】：保留原句的标点与段落结构；"""
-    elif is_en:
-        lang_name = "专业、地道的商业与合规英语 (Professional Business & Compliance English)"
-        domain_rules = """3. 【国际企业商务与合规规范】：
-   - 采用国际标准合规与技术术语（Checklist, Compliant, Non-compliant, Select, Other, Tenant Administrator）；
-   - 纯正英文输出，严禁混入中文字符；
-4. 【排版严谨】：句式严密规范；"""
-    else:
-        lang_name = f"地道、专业的目标语言({target_lang})"
-        domain_rules = """3. 【专业术语规范】：采用目标语言在商业与技术合规领域的行业通用专业表达；
-4. 【文风严谨】：符合正式商务报表与检查清单规范；"""
-
-    prompt = f"""你是一位顶级商业表格与合规文档本地化专家。请将以下 Excel (XLSX) 文档文本键值对翻译为{lang_name}。
-
-【核心本地化与排版规范】：
-1. 保持输入 JSON 字典的 Key 键名完全一致，仅将 Value 翻译为地道的目标语言；
-2. 即使是单独的表头、下拉选项（如“選択”->“选择”、“その他”->“其他”），也必须准确翻译为目标语言；
-{domain_rules}
-5. 严格仅返回纯合法 JSON 格式（格式为 {{"key": "译文"}}），严禁包含任何前导解释、注释或 Markdown 代码块标记（严禁写 ```json）。
-
-待翻译数据：
-{json.dumps(batch_dict, ensure_ascii=False, indent=2)}"""
-
-    url = f"{api_base.rstrip('/')}/chat/completions"
-    req_payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1,
-        "stream": True,
-        "thinking": False,
-        "reasoning": {"enabled": False},
-        "request_context": "spreadsheet_translation"
-    }
-    req_bytes = json.dumps(req_payload).encode('utf-8')
-
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(
-                url,
-                data=req_bytes,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                }
-            )
-            chunks = []
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                for line in resp:
-                    l = line.decode('utf-8', errors='replace').strip()
-                    if not l.startswith('data:'):
-                        continue
-                    d = l[5:].strip()
-                    if d == '[DONE]':
-                        break
-                    try:
-                        item = json.loads(d)
-                        delta = item.get('choices', [{}])[0].get('delta', {})
-                        content = delta.get('content', '')
-                        if content:
-                            chunks.append(content)
-                    except Exception:
-                        pass
-
-            raw_text = "".join(chunks).strip()
-            if raw_text.startswith("```"):
-                raw_text = re.sub(r'^```(?:json)?\s*', '', raw_text)
-                raw_text = re.sub(r'\s*```$', '', raw_text)
-
-            match = re.search(r'\{[\s\S]*\}', raw_text)
-            if match:
-                try:
-                    parsed = json.loads(match.group(0))
-                    if isinstance(parsed, dict) and len(parsed) > 0:
-                        result = {}
-                        for k, orig in batch_dict.items():
-                            result[k] = parsed.get(k, orig)
-                        return result
-                except Exception:
-                    pass
-
-        except Exception as e:
-            if attempt < retries:
-                time.sleep(2.0 * (attempt + 1))
-            else:
-                if len(batch_dict) > 5:
-                    items = list(batch_dict.items())
-                    mid = len(items) // 2
-                    sub1 = dict(items[:mid])
-                    sub2 = dict(items[mid:])
-                    res1 = _translate_single_batch_streaming(sub1, target_lang, api_base, api_key, model=model, retries=retries)
-                    res2 = _translate_single_batch_streaming(sub2, target_lang, api_base, api_key, model=model, retries=retries)
-                    res = {}
-                    res.update(res1)
-                    res.update(res2)
-                    return res
-                return dict(batch_dict)
-
-    if len(batch_dict) > 5:
-        items = list(batch_dict.items())
-        mid = len(items) // 2
-        sub1 = dict(items[:mid])
-        sub2 = dict(items[mid:])
-        res1 = _translate_single_batch_streaming(sub1, target_lang, api_base, api_key, model=model, retries=retries)
-        res2 = _translate_single_batch_streaming(sub2, target_lang, api_base, api_key, model=model, retries=retries)
-        res = {}
-        res.update(res1)
-        res.update(res2)
-        return res
-
-    return dict(batch_dict)
-
-
 def translate_texts(input_json_path: str, output_json_path: str, target_lang: str = 'zh-CN',
-                    batch_size: int = 80, concurrency: int = 4) -> dict:
-    """读取待翻译 JSON 字典，通过去重、透传过滤、断点检查点与并发流式调用模型代理进行高质量翻译"""
-    if not os.path.isfile(input_json_path):
-        raise FileNotFoundError(f"找不到输入的待翻译字典: {input_json_path}")
-
-    with open(input_json_path, 'r', encoding='utf-8') as f:
-        all_texts = json.load(f)
-
-    if not all_texts:
-        with open(output_json_path, 'w', encoding='utf-8') as f:
-            json.dump({}, f, ensure_ascii=False, indent=2)
-        return {}
-
-    api_base = os.environ.get('OPENAI_BASE_URL') or os.environ.get('DEEPSEEK_BASE_URL') or 'http://ops-ai-orchestrator:3007/ai/proxy/v1'
-    api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('DEEPSEEK_API_KEY') or ''
-
-    # 0. 断点检查点缓存初始化
-    cache_file = os.path.join(os.path.dirname(os.path.abspath(output_json_path)), '.translation_cache.json')
-    translated_unique_map = {}
-    if os.path.isfile(cache_file):
-        try:
-            with open(cache_file, 'r', encoding='utf-8') as cf:
-                cached_data = json.load(cf)
-                if isinstance(cached_data, dict):
-                    translated_unique_map.update(cached_data)
-                    print(f"📦 [Cache] 命中断点检查点，已恢复 {len(translated_unique_map)} 处已完成翻译项。")
-        except Exception as e:
-            print(f"⚠️ [Cache] 加载断点缓存失败: {e}")
-
-    # 1. 文本去重与透传过滤
-    unique_to_translate = {}
-    passthrough_translations = {}
-
-    for k, text in all_texts.items():
-        if _is_passthrough_text(text):
-            passthrough_translations[text] = text
-        else:
-            if text not in unique_to_translate:
-                unique_to_translate[text] = f"t_{len(unique_to_translate)}"
-
-    pending_to_translate = {t: uid for t, uid in unique_to_translate.items() if t not in translated_unique_map}
-    print(f"🌐 [2/4] 启动智能并发表格翻译 (总项: {len(all_texts)}，需翻译总项: {len(unique_to_translate)}，已命中缓存: {len(translated_unique_map)}，待处理项: {len(pending_to_translate)}，免翻译透传项: {len(passthrough_translations)})...")
-
-    # 2. 分批并发翻译未缓存项
-    unique_items = list(pending_to_translate.items())
-    batches = []
-    current_batch = {}
-
-    for text, uid in unique_items:
-        current_batch[uid] = text
-        if len(current_batch) >= batch_size:
-            batches.append(current_batch)
-            current_batch = {}
-    if current_batch:
-        batches.append(current_batch)
-
-    total_batches = len(batches)
-    cache_lock = threading.Lock()
-
-    def _flush_cache():
-        try:
-            tmp_cache = cache_file + '.tmp'
-            with open(tmp_cache, 'w', encoding='utf-8') as cf:
-                json.dump(translated_unique_map, cf, ensure_ascii=False)
-            os.replace(tmp_cache, cache_file)
-        except Exception:
-            pass
-
-    if total_batches > 0:
-        print(f"  ⚡ 智能划分为 {total_batches} 批并发处理 (并发度: {concurrency}，批大小: {batch_size})...")
-        with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            future_to_idx = {
-                executor.submit(_translate_single_batch_streaming, b, target_lang, api_base, api_key, model="default"): idx
-                for idx, b in enumerate(batches)
-            }
-            completed_batches = 0
-            for future in as_completed(future_to_idx):
-                idx = future_to_idx[future]
-                completed_batches += 1
-                pct = int(completed_batches / total_batches * 100)
-                print(f"  ✓ 本地化处理进度: {completed_batches}/{total_batches} ({pct}%)", flush=True)
-                try:
-                    b_res = future.result()
-                    with cache_lock:
-                        for uid, trans in b_res.items():
-                            orig_candidates = [t for t, u in unique_to_translate.items() if u == uid]
-                            if orig_candidates:
-                                translated_unique_map[orig_candidates[0]] = trans
-                        _flush_cache()
-                except Exception as e:
-                    print(f"  ⚠️ 批次 {idx} 发生异常: {e}")
-                    with cache_lock:
-                        for uid, text in batches[idx].items():
-                            orig_text = [t for t, u in unique_to_translate.items() if u == uid][0]
-                            translated_unique_map[orig_text] = orig_text
-                        _flush_cache()
-
-    # 3. 回填映射
-    final_output = {}
-    for k, orig_text in all_texts.items():
-        if orig_text in passthrough_translations:
-            final_output[k] = orig_text
-        elif orig_text in translated_unique_map:
-            final_output[k] = translated_unique_map[orig_text]
-        else:
-            final_output[k] = orig_text
-
-    # 4. 质检验收门禁与增量补译
-    is_zh = any(code in target_lang.lower() for code in ["zh", "chinese", "cn"])
-    ja_pattern = re.compile(r'[\u3040-\u309F\u30A0-\u30FF]')
-    missed_unique = {}
-
-    for k, orig_text in all_texts.items():
-        trans_text = final_output.get(k, orig_text)
-        if _is_passthrough_text(orig_text):
-            continue
-        needs_sweep = False
-        if is_zh:
-            # 日译中：如果译文中仍然残留明显的假名字符，需要补译
-            if ja_pattern.search(trans_text):
-                needs_sweep = True
-
-        if needs_sweep and orig_text not in missed_unique:
-            missed_unique[orig_text] = f"sw_{len(missed_unique)}"
-
-    if missed_unique:
-        print(f"  🔍 [质检验收门禁] 探测到 {len(missed_unique)} 处文本未完成高质量本地化，启动增量靶向补译流水线...")
-        sweep_batches = []
-        cur_sw = {}
-        for text, uid in missed_unique.items():
-            cur_sw[uid] = text
-            if len(cur_sw) >= 25:
-                sweep_batches.append(cur_sw)
-                cur_sw = {}
-        if cur_sw:
-            sweep_batches.append(cur_sw)
-
-        for sw_b in sweep_batches:
-            try:
-                sw_res = _translate_single_batch_streaming(sw_b, target_lang, api_base, api_key, model="default", retries=3)
-                for uid, trans in sw_res.items():
-                    orig_candidates = [t for t, u in missed_unique.items() if u == uid]
-                    if orig_candidates and trans != orig_candidates[0]:
-                        translated_unique_map[orig_candidates[0]] = trans
-            except Exception as e:
-                print(f"  ⚠️ 增量补译批次处理异常: {e}")
-
-        for k, orig_text in all_texts.items():
-            if orig_text in translated_unique_map:
-                final_output[k] = translated_unique_map[orig_text]
-
-    out_dir = os.path.dirname(output_json_path)
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-
-    with open(output_json_path, 'w', encoding='utf-8') as f:
-        json.dump(final_output, f, ensure_ascii=False, indent=2)
-
-    if os.path.exists(cache_file):
-        try:
-            os.remove(cache_file)
-        except Exception:
-            pass
-
-    print(f"✅ 文本本地化完成！已保存高质量译文字典至: {output_json_path}")
-    return final_output
+                    batch_size: int = 50, concurrency: int = 4, *, session_id=None) -> dict:
+    from xlsx_translation_batches import load_protected_prefixes, translate_texts as translate
+    from xlsx_translation_client import review_batch
+    protected_prefixes = load_protected_prefixes(input_json_path)
+    kwargs = dict(
+        is_passthrough=_is_passthrough_text,
+        translate_batch_fn=_translate_single_batch_streaming,
+        review_batch_fn=review_batch,
+        session_id=session_id,
+    )
+    if protected_prefixes:
+        kwargs['protected_prefixes'] = protected_prefixes
+    return translate(input_json_path, output_json_path, target_lang, batch_size, concurrency, **kwargs)
 
 
 def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
-              lang: str = 'zh-CN', run_recalc: bool = True) -> str:
+              lang: str = 'zh-CN', run_recalc: bool = False) -> str:
     """
     读取翻译后的 JSON，通过 mapping 原地写回 sharedStrings.xml、workbook.xml 与 sheet*.xml，
     精确保持所有 OOXML 架构与根命名空间，打包为新的 XLSX。
@@ -620,15 +362,18 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
 
         for idx, si in enumerate(sst_root):
             key = f"sst_{idx}"
-            if key not in translations:
-                continue
-            new_text = translations[key]
             orig_meta = mapping.get(key, {})
+            run_keys = orig_meta.get('run_keys')
+            if key not in translations and not run_keys:
+                continue
+            new_text = translations.get(key, '')
 
             if not orig_meta.get('has_runs'):
                 t_node = si.find(f'{{{main_ns}}}t')
                 if t_node is not None:
-                    t_node.text = new_text
+                    original = t_node.text or ''
+                    t_node.text = (re.match(r'^\s*', original).group(0) + new_text.strip()
+                                   + re.search(r'\s*$', original).group(0))
                     if new_text.startswith(' ') or new_text.endswith(' ') or '\n' in new_text:
                         t_node.attrib['{http://www.w3.org/XML/1998/namespace}space'] = 'preserve'
                 # 非日文目标语言时，清除原有的日文振假名 rPh 与 phoneticPr
@@ -639,7 +384,16 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
                         si.remove(phpr)
             else:
                 runs = si.findall(f'{{{main_ns}}}r')
-                if runs:
+                if runs and run_keys:
+                    for run, run_key in zip(runs, run_keys):
+                        text = run.find(f'{{{main_ns}}}t')
+                        if text is not None and run_key in translations:
+                            original = text.text or ''
+                            leading = re.match(r'^\s*', original).group(0)
+                            trailing = re.search(r'\s*$', original).group(0)
+                            text.text = leading + translations[run_key].strip() + trailing
+                            text.attrib['{http://www.w3.org/XML/1998/namespace}space'] = 'preserve'
+                elif runs:
                     first_t = runs[0].find(f'{{{main_ns}}}t')
                     if first_t is not None:
                         first_t.text = new_text
@@ -649,17 +403,20 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
                         extra_t = extra_r.find(f'{{{main_ns}}}t')
                         if extra_t is not None:
                             extra_t.text = ""
+            if not is_ja:
+                for phonetic in [*si.findall(f'{{{main_ns}}}rPh'), *si.findall(f'{{{main_ns}}}phoneticPr')]:
+                    si.remove(phonetic)
 
         _preserve_root_tag_write(sst_tree, sst_path, orig_sst_text)
         print("  ✓ 已注入 xl/sharedStrings.xml 共享字符串。")
 
     # 2. 回填 xl/workbook.xml 中的工作表名称 (采用字节级无损正则替换，避免 ET 重建破坏 x15ac 等未声明前缀)
+    sheet_name_map = {}
     wb_path = os.path.join(temp_dir, 'xl', 'workbook.xml')
     if os.path.isfile(wb_path):
         with open(wb_path, 'r', encoding='utf-8', errors='ignore') as f:
             orig_wb_text = f.read()
 
-        sheet_name_map = {}
         for key, new_name in translations.items():
             if key.startswith('sheet_name_'):
                 orig_meta = mapping.get(key, {})
@@ -672,10 +429,10 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
         if sheet_name_map:
             def replace_sheet_tag(match):
                 full_tag = match.group(0)
-                name_val = match.group(1)
+                name_val = html.unescape(match.group(1))
                 if name_val in sheet_name_map:
-                    target = sheet_name_map[name_val]
-                    return full_tag.replace(f'name="{name_val}"', f'name="{target}"')
+                    target = escape(sheet_name_map[name_val], {'"': '&quot;'})
+                    return full_tag.replace(f'name="{match.group(1)}"', f'name="{target}"')
                 return full_tag
 
             updated_wb_text = re.sub(r'<sheet\b[^>]*\bname="([^"]+)"[^>]*>', replace_sheet_tag, orig_wb_text)
@@ -733,6 +490,17 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
             except Exception as e:
                 print(f"  ⚠️ 回填工作表 {fname} 时跳过: {e}")
 
+    pack_native_text(temp_dir, mapping, translations, _preserve_root_tag_write)
+    text_translations = {
+        meta['orig_text']: translations[key]
+        for key, meta in mapping.items()
+        if key in translations and isinstance(meta.get('orig_text'), str)
+    }
+    update_package_references(temp_dir, sheet_name_map, text_translations)
+    localized_fonts = apply_font_localization(temp_dir, lang)
+    if localized_fonts:
+        print(f"  ✓ 已本地化 {localized_fonts} 个 XML 部件的字体与字符集 ({lang})。")
+
     # 4. 重新打包为 XLSX (ZIP)
     out_dir = os.path.dirname(output_xlsx)
     if out_dir:
@@ -744,8 +512,10 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
         for root, dirs, files in os.walk(temp_dir):
             for file in files:
                 full_path = os.path.join(root, file)
+                if os.path.abspath(full_path) in (os.path.abspath(output_xlsx), os.path.abspath(temp_zip_path)):
+                    continue
                 rel_path = os.path.relpath(full_path, temp_dir)
-                if rel_path.startswith(('ooxml_mapping.json', 'translation_')):
+                if rel_path.startswith(('ooxml_mapping.json', 'translation_', '.translation_cache')):
                     continue
                 z.write(full_path, rel_path)
 
@@ -775,17 +545,20 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
             except Exception as e:
                 print(f"  ⚠️ 调用 recalc.py 时发生异常: {e}")
 
-    print(f"🎉 高保真 Excel 翻译与版式打包成功！输出交付文件: {output_xlsx}")
+    print(f"✓ 候选工作簿已打包，等待完整性验收: {output_xlsx}")
     return output_xlsx
 
 
 def auto_translate_xlsx(xlsx_path: str, output_xlsx: str, lang: str = 'zh-CN',
-                        batch_size: int = 100, concurrency: int = 4,
+                        batch_size: int = 50, concurrency: int = 4,
                         temp_dir: str = None, keep_temp: bool = False,
-                        run_recalc: bool = True) -> str:
+                        run_recalc: bool = False) -> str:
     """一键全自动端到端翻译 Excel 工作簿 (解包+并发翻译+回填打包)"""
     xlsx_path = os.path.abspath(xlsx_path)
     output_xlsx = os.path.abspath(output_xlsx)
+    if xlsx_path == output_xlsx:
+        raise ValueError('输入附件不能作为翻译输出覆盖')
+    source_hash = hashlib.sha256(Path(xlsx_path).read_bytes()).hexdigest()
 
     if not temp_dir:
         temp_dir = os.path.join(os.path.dirname(output_xlsx), f".ooxml_{os.path.basename(output_xlsx)}")
@@ -793,15 +566,25 @@ def auto_translate_xlsx(xlsx_path: str, output_xlsx: str, lang: str = 'zh-CN',
     os.makedirs(temp_dir, exist_ok=True)
     in_json = os.path.join(temp_dir, 'translation_input.json')
     out_json = os.path.join(temp_dir, 'translation_output.json')
+    candidate = os.path.join(temp_dir, 'candidate.xlsx')
 
     success = False
     try:
         unpack_xlsx(xlsx_path, temp_dir, in_json)
-        translate_texts(in_json, out_json, target_lang=lang,
+        translated = translate_texts(in_json, out_json, target_lang=lang,
                         batch_size=batch_size, concurrency=concurrency)
-        pack_xlsx(temp_dir, out_json, output_xlsx, lang=lang, run_recalc=run_recalc)
+        pack_xlsx(temp_dir, out_json, candidate, lang=lang, run_recalc=run_recalc)
+        from xlsx_translation_quality import validate_delivery
+        with open(os.path.join(temp_dir, 'ooxml_mapping.json'), encoding='utf-8') as stream:
+            quality = validate_delivery(xlsx_path, candidate, json.load(stream), translated, lang)
+        if hashlib.sha256(Path(xlsx_path).read_bytes()).hexdigest() != source_hash:
+            raise ValueError('翻译期间原始附件发生变化')
+        os.replace(candidate, output_xlsx)
+        print('✓ 工作簿结构及翻译验收通过', flush=True)
         success = True
     finally:
+        if os.path.exists(candidate):
+            os.remove(candidate)
         # 仅在完整打包成功且未开启 keep_temp 时清理临时目录；
         # 异常/超时时保留 temp_dir（含断点缓存 .translation_cache.json），供重试时秒级断点续传
         if success and not keep_temp and os.path.exists(temp_dir):
@@ -819,11 +602,11 @@ def main():
     auto_parser.add_argument("xlsx", help="输入的原始 XLSX 路径")
     auto_parser.add_argument("output_xlsx", help="输出的目标 XLSX 文件路径")
     auto_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (如: zh-CN, en-US, ja-JP，默认: zh-CN)")
-    auto_parser.add_argument("--batch-size", type=int, default=100, help="每批翻译项数 (默认: 100)")
+    auto_parser.add_argument("--batch-size", type=int, default=50, help="每批翻译项数 (默认: 50)")
     auto_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
     auto_parser.add_argument("--temp-dir", default=None, help="解压临时目录")
     auto_parser.add_argument("--keep-temp", action="store_true", default=False, help="保留临时解包目录 (默认自动清理)")
-    auto_parser.add_argument("--no-recalc", action="store_true", default=False, help="跳过 LibreOffice 无头公式重算")
+    auto_parser.add_argument("--no-recalc", action="store_true", default=True, help="保留原生结构，打开 Excel 时重算")
 
     # unpack 子命令
     unpack_parser = subparsers.add_parser("unpack", help="解压 XLSX 并导出待翻译 JSON 字典")
@@ -836,7 +619,7 @@ def main():
     translate_parser.add_argument("in_json", help="输入的待翻译 JSON 字典路径")
     translate_parser.add_argument("out_json", help="输出的译文 JSON 字典路径")
     translate_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (默认: zh-CN)")
-    translate_parser.add_argument("--batch-size", type=int, default=100, help="每批翻译项数 (默认: 100)")
+    translate_parser.add_argument("--batch-size", type=int, default=50, help="每批翻译项数 (默认: 50)")
     translate_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
 
     # pack 子命令
@@ -845,7 +628,7 @@ def main():
     pack_parser.add_argument("translated_json", help="翻译后的译文 JSON 字典路径")
     pack_parser.add_argument("output_xlsx", help="输出的目标 XLSX 文件路径")
     pack_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (默认: zh-CN)")
-    pack_parser.add_argument("--no-recalc", action="store_true", default=False, help="跳过 LibreOffice 无头公式重算")
+    pack_parser.add_argument("--no-recalc", action="store_true", default=True, help="保留原生结构，打开 Excel 时重算")
 
     args = parser.parse_args()
 

@@ -131,7 +131,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "读取沙箱工作区或知识库中的文件内容（支持代码文件、文本、markdown、docx、xlsx、pptx、pdf、json 等，支持行号切片查看大文件）",
+            "description": "读取工作区文件或检索结果中的 personal-knowledge:// 个人资料原件。支持行号续读；本地PDF可按页或bbox复核，页码/区域与行号不可混用。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -146,6 +146,19 @@ SANDBOX_TOOLS = [
                     "end_line": {
                         "type": "integer",
                         "description": "结束行号（可选，包含该行，用于分片读取长文件）"
+                    },
+                    "start_page": {
+                        "type": "integer", "minimum": 1,
+                        "description": "PDF起始页，从1开始。仅给此值时读取该单页。"
+                    },
+                    "end_page": {
+                        "type": "integer", "minimum": 1,
+                        "description": "PDF结束页，包含该页；与start_page指定连续范围。"
+                    },
+                    "bbox": {
+                        "type": "array", "items": {"type": "number"},
+                        "minItems": 4, "maxItems": 4,
+                        "description": "PDF单页区域[x0,top,x1,bottom]，单位为PDF点，左上为原点。必须指定单个start_page；可使用正文区域标注的坐标。"
                     },
                     "sheet": {
                         "type": "string",
@@ -252,10 +265,10 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "scan_knowledge",
-            "description": "扫描并读取挂载的个人知识库 (/knowledge) 及个人成果库 (/workspace/deliverables) 中的参考文档与沉淀成果条目",
+            "description": "检索个人空间统一管理的资料原件和标签，返回来源链接及可供 read_file 继续读取的资料标识。",
             "parameters": {
                 "type": "object",
-                "properties": {}
+                "properties": {"query": {"type": "string", "description": "要检索的主题；省略时浏览个人资料"}}
             }
         }
     },
@@ -270,6 +283,10 @@ SANDBOX_TOOLS = [
                     "skill_name": {
                         "type": "string",
                         "description": "技能名称，例如 'guizang-ppt'"
+                    },
+                    "section": {
+                        "type": "string",
+                        "description": "可选：按需展开的细则模块或章节标题（例如 xlsx 的 'translation'、'audit'、'generation'、'inspection'）"
                     }
                 },
                 "required": ["skill_name"]
@@ -301,7 +318,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "vision_inspect",
-            "description": "检查并深度分析沙箱工作区或知识库中的图片或多页 PDF 视觉内容（支持 png, jpg, jpeg, webp 等图片以及扫描/画册型 pdf 的 OCR、排版与视觉理解）。对多页 PDF 支持以 2 列高清网格平铺批量阅读（推荐单次传入 2~4 页范围，例如 '1-4'、'5-8'）。",
+            "description": "识别图片、扫描件/OCR或图片占比高的PDF，以及用户明确要求的图表/版式。普通文本PDF须优先用read_file分段阅读，不能因为文本截断改用视觉。每次PDF最多4页，按实际返回页码继续读取。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -311,7 +328,7 @@ SANDBOX_TOOLS = [
                     },
                     "page": {
                         "type": ["integer", "string"],
-                        "description": "可选。针对 PDF 文档时指定的页码（例如 1 或 2）或页码范围（例如 '1-4'、'5-8'、'all'）。单次推荐最多指定 4 页以保证文字清晰度与响应时效。"
+                        "description": "可选。PDF页码或连续范围，例如1、'1-4'、'5-8'；每次最多4页，超过会拒绝。all仅请求开头最多4页，并不代表全文。"
                     },
                     "prompt": {
                         "type": "string",
@@ -627,18 +644,27 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         except (ValueError, TypeError):
             e_val = None
         prompt_val = params.get("prompt") or params.get("query") or params.get("instruction") or None
+        if Path(str(fpath)).suffix.lower() == '.pdf':
+            # Do not turn an invalid explicit PDF selection into an implicit full read.
+            s_val = params.get('start_line', s_val)
+            e_val = params.get('end_line', e_val)
         sheet_val = params.get("sheet") or params.get("sheet_name") or None
         range_val = params.get("range") or params.get("cell_range") or None
         current_model = os.environ.get("DSH_MODEL") or None
+        from .document_reading_budget import read_budget
         res = read_workspace_file(
             str(fpath),
+            max_chars=read_budget(),
             start_line=s_val,
             end_line=e_val,
             deadline=deadline,
             model_name=current_model,
             prompt=prompt_val,
             sheet_name=sheet_val,
-            cell_range=range_val
+            cell_range=range_val,
+            start_page=params.get('start_page'),
+            end_page=params.get('end_page'),
+            bbox=params.get('bbox'),
         )
 
     elif name_clean in ["patch_file", "replace_content", "patch", "edit_file", "replace_in_file"]:
@@ -695,7 +721,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             params.get("skill") or
             (str(list(params.values())[0]) if params else "")
         )
-        res = read_skill(skill_name)
+        section = params.get("section") or params.get("chapter") or None
+        prompt_hint = params.get("prompt") or None
+        res = read_skill(skill_name, prompt=prompt_hint, section=section)
 
     elif name_clean in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat", "send_document", "deliver_file", "push_file"]:
         fpath = (

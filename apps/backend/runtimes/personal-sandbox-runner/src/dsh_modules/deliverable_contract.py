@@ -460,6 +460,8 @@ def resolve_pdf_theme(prompt: str) -> str:
 
 def resolve_pdf_page_bounds(prompt: str) -> Tuple[Optional[int], Optional[int]]:
     """Resolves min_pages and max_pages from prompt if specified."""
+    from .pdf_output_contract import pdf_page_requirement_text
+    prompt = pdf_page_requirement_text(prompt)
     if not prompt:
         return None, None
     m_range = re.search(r'(\d+)\s*(?:到|-|至)\s*(\d+)\s*页', prompt)
@@ -506,13 +508,10 @@ def materialize_pdf_from_markdown(
         # A plan/reply rendered as PDF would mask the missing engine run and stop the
         # deliverable nudge; the translation gate would then reject it anyway.
         return None
-    has_pdf_intent = (
-        (expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables))
-        or bool(re.search(r"(?:生成|导出|制作|转为|转成|做成)[^，。\n]{0,8}pdf", prompt or "", re.I))
-        or "pdf" in (prompt or "").lower()
-    )
-    if not has_pdf_intent:
+    from .pdf_output_contract import requests_pdf_output, pdf_user_instruction
+    if not requests_pdf_output(prompt, expected_deliverables):
         return None
+    prompt = pdf_user_instruction(prompt)
 
     workspace = Path(workspace_dir)
     if not workspace.exists():

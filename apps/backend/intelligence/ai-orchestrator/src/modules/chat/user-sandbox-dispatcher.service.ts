@@ -1090,6 +1090,33 @@ export class UserSandboxDispatcherService {
         return true;
       }
 
+      // 防御门禁：若当前属于文件生成/文档本地化任务，或执行已经开始并产生了过程状态，
+      // 绝对不能降级到无沙箱文件系统的普通问答（标准问答无法落盘文件），应输出友好错误并保留状态供重试
+      const hasStartedExecution = Boolean(turnStartTime && (thoughtAccumulator || deltaAccumulator || (errMsg && errMsg !== 'Sandbox not ready')));
+      const isFileTask = sessionAttachedFiles.length > 0 || isArtifactGenerationRequest(body.message);
+
+      if (hasStartedExecution || isFileTask) {
+        const errorDetail = errMsg.includes('terminated')
+          ? '底层连接中断（长时间任务处理中网络流重置）'
+          : errMsg;
+        const friendlyMsg = `⚠️ 个人沙箱在处理任务时连接异常中断（${errorDetail}）。工作区中的临时进度与断点已妥善保留，建议点击“重试”继续执行断点处理。`;
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyMsg,
+          data: { code: 'SANDBOX_EXECUTION_INTERRUPTED', retryable: true },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyMsg,
+          errMsg,
+          emit,
+          { executed: true, error: errMsg }
+        );
+        return true;
+      }
+
       // 仅当沙箱基础设施完全无法连接（容器未启动/Broker宕机），且尚未进入任何任务执行时，才降级到标准问答直连模式
       emit({
         type: StreamEventType.OBSERVATION,

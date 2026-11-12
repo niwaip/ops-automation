@@ -244,7 +244,8 @@ def dispatch_tool_calls(
                 domain_scope = (analysis_domain_scope(last_user_prompt) if canonical_name in {
                     'analyze_spreadsheet', 'aggregate_spreadsheet',
                     'check_spreadsheet_equations', 'validate_spreadsheet_rows'} else nullcontext())
-                with domain_scope:
+                from .document_reading_budget import native_read_budget
+                with domain_scope, native_read_budget(policy.max_tool_result_chars):
                     tool_res = execute_fn(canonical_name, t_params, deadline=deadline)
                 tool_res = validate_execution_output(last_user_prompt, tool_res)
                 status = "error" if error_fn(tool_res) else "success"

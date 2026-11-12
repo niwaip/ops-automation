@@ -799,7 +799,8 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
         self.assertNotIn("bash", tool_names_inspect)
         self.assertNotIn("write_markdown", tool_names_inspect)
         self.assertNotIn("patch_file", tool_names_inspect)
-        self.assertTrue({"read_file", "vision_inspect", "scan_knowledge"}.issubset(tool_names_inspect))
+        self.assertTrue({"read_file", "scan_knowledge"}.issubset(tool_names_inspect))
+        self.assertNotIn("vision_inspect", tool_names_inspect)
 
         # 验证提示词明确引导纯对话输出与严禁 bash 落盘
         user_turn = build_user_turn(
