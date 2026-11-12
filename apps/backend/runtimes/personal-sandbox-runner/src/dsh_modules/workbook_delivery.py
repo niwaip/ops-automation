@@ -92,10 +92,31 @@ def generated_workbook_totals(path):
         book.close()
 
 
-def deliverable_is_valid(path):
+def is_delivery_veto_enabled() -> bool:
+    """
+    Check whether strict deliverable veto (quarantine and hard rejection) is enabled.
+    Defaults to False per user instruction ('先不要一票否决，先走到最后，进行验证，测试完后，我会告诉你').
+    Set DSH_STRICT_DELIVERY_VETO='1' / 'true' to explicitly re-enable strict quarantine.
+    """
+    import os
+    val = os.environ.get("DSH_STRICT_DELIVERY_VETO", "0").strip().lower()
+    return val in ("1", "true", "yes", "on")
+
+
+def deliverable_is_valid(path, strict=None):
     path = Path(path)
     if path.suffix.lower() not in ('.xlsx', '.xlsm'):
         return True
+    if strict is None:
+        strict = is_delivery_veto_enabled()
+    if not strict:
+        if not path.exists() or path.stat().st_size == 0:
+            return False
+        try:
+            import zipfile
+            return zipfile.is_zipfile(path)
+        except Exception:
+            return False
     try:
         from .spreadsheet_update.delivery import validate_update_delivery
         is_valid, _ = validate_update_delivery(path)
@@ -104,8 +125,13 @@ def deliverable_is_valid(path):
         return inspect_generated_workbook(path)['valid']
 
 
-def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds):
-    """Keep invalid new outputs recoverable but outside root artifact auto-discovery."""
+def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds, strict=None):
+    """
+    Keep invalid new outputs recoverable but outside root artifact auto-discovery.
+    When strict is False (lenient verification mode), keeps files in workspace and preserves outbounds,
+    appending non-blocking warning notes to allow user testing and verification.
+    """
+    import os
     import json
     import uuid
     from urllib.parse import quote, unquote
@@ -116,8 +142,20 @@ def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds)
         is_verified_update_file = None
         validate_update_delivery = None
 
+    if strict is None:
+        if os.environ.get("DSH_DISABLE_DELIVERY_VETO", "").lower() in ("true", "1", "yes"):
+            strict = False
+        elif os.environ.get("DSH_STRICT_DELIVERY_VETO", "").lower() in ("false", "0", "no"):
+            strict = False
+        elif os.environ.get("DSH_STRICT_DELIVERY_VETO", "").lower() in ("true", "1", "yes"):
+            strict = True
+        else:
+            # Standalone call default for unit tests testing quarantine
+            strict = True
+
     root = Path(workspace)
     rejected = []
+    warnings = []
     for path in root.iterdir() if root.exists() else []:
         if (path.is_symlink() or not path.is_file() or path.name.startswith('.')
                 or path.suffix.lower() not in ('.xlsx', '.xlsm')
@@ -136,10 +174,29 @@ def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds)
             if validation['valid']:
                 continue
             issues = validation['issues']
+
+        if not strict:
+            warnings.append({'fileName': path.name, 'issues': issues, 'path': str(path)})
+            continue
+
         folder = root / '.dsh' / 'rejected' / uuid.uuid4().hex
         folder.mkdir(parents=True, exist_ok=True)
         path.replace(folder / path.name)
         rejected.append({'fileName': path.name, 'issues': issues, 'preserved_path': str(folder / path.name)})
+
+    if not strict:
+        if not warnings:
+            return text, outbounds, []
+        detail = '；'.join(
+            w['fileName'] + '（' + '；'.join(w['issues'][:4]) + '）' for w in warnings
+        )
+        soft_notice = (
+            '\n\n💡 **交付核验提示**：文件已正常生成并提供下载。系统在数据与公式一致性复核中检测到如下参考项：\n'
+            f'- {detail}\n'
+            '（当前处于验证测试阶段，已为您保留全部交付文件以供验收与测试。）'
+        )
+        return text + soft_notice, outbounds, []
+
     if not rejected:
         return text, outbounds, []
     names = {r['fileName'] for r in rejected}

@@ -46,7 +46,7 @@ def cmd_version(args):
     print(f"DeepSeek Harness CLI (dsh) version {VERSION}")
     print(f"Python: {sys.version.split()[0]} | Node: {subprocess.getoutput('node -v 2>/dev/null') or 'N/A'}")
     print(f"Workspace: {WORKSPACE_DIR}")
-    print(f"Knowledge Space: {KNOWLEDGE_DIR} (Read-Write)")
+    print(f"Personal Knowledge: personal workspace via authenticated gateway")
     print(f"User Custom Skills: {CUSTOM_SKILL_DIR}")
     print(f"Managed Plugins: {PLUGIN_DIR}")
     print(f"Certified Skills: {SKILL_DIR}")
@@ -79,7 +79,7 @@ def cmd_info(args):
 
     print(f"Model Gateway: {DEFAULT_PROXY_URL}")
     print(f"Managed Config: {DEFAULT_CONFIG_PATH} ({'Active' if config else 'Default fallback'})")
-    print(f"Knowledge Base: {KNOWLEDGE_DIR} ({len(knowledge_files)} items available, Read-Write)")
+    print(f"Personal Knowledge: personal workspace originals via authenticated gateway")
     print(f"User Custom Skills: {CUSTOM_SKILL_DIR} ({len(custom_skills)} installed: {', '.join(custom_skills) if custom_skills else 'None'})")
     print(f"Managed System Plugins: {len(plugin_list)} active: {', '.join(plugin_list) if plugin_list else 'None'}")
     print(f"Certified Design & Slide Skills: {len(skill_list)} installed: {', '.join(skill_list) if skill_list else 'None'}")

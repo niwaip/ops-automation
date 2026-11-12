@@ -224,6 +224,8 @@ def get_available_skills() -> list:
             meta["aliases"] = list(dict.fromkeys(meta["aliases"]))
             skills.append(meta)
             seen_ids.add(item.name)
+    from .mcp_skill_catalog import available_mcp_skills
+    skills.extend(s for s in available_mcp_skills() if s["id"] not in seen_ids)
     return skills
 
 
@@ -250,8 +252,23 @@ def cmd_skills(args):
         print(f" • {s['id']:<16} [{s['name']}]{desc}")
 
 
-def read_skill(skill_name: str, prompt: Optional[str] = None) -> str:
+def read_skill(
+    skill_name: str,
+    prompt: Optional[str] = None,
+    section: Optional[str] = None,
+    max_chars: Optional[int] = None,
+) -> str:
     """Reads skill documentation, style guide, and templates from CUSTOM_SKILL_DIR or SKILL_DIR with hierarchical progressive loading."""
+    from .mcp_skill_catalog import read_mcp_skill
+    from .skill_disclosure import build_layered_skill_body
+
+    remote = read_mcp_skill(skill_name)
+    if remote is not None:
+        if max_chars or section:
+            return build_layered_skill_body(
+                skill_name, remote, prompt=prompt, section=section, max_chars=max_chars
+            )["text"]
+        return remote
     clean_name = skill_name.strip().lower()
     target_dir = None
 
@@ -299,26 +316,15 @@ def read_skill(skill_name: str, prompt: Optional[str] = None) -> str:
             if len(parts) >= 3:
                 body = parts[2].strip()
 
-        # 分层载入：根据用户 prompt 动态加载 references 下的细分场景模块
-        hierarchical_section = ""
-        refs_dir = target_dir / "references"
-        if refs_dir.exists() and refs_dir.is_dir() and prompt:
-            p_lower = prompt.lower()
-            target_ref = None
-            if clean_name in ["pdf", "pdf report", "导出pdf", "生成pdf"]:
-                if any(k in p_lower for k in ["docx", "word", "合同", "转为pdf", "转成pdf", "转换"]):
-                    target_ref = refs_dir / "docx2pdf.md"
-                elif any(k in p_lower for k in ["表单", "填报", "填写", "fillable", "acroform"]):
-                    target_ref = refs_dir / "forms.md"
-                else:
-                    target_ref = refs_dir / "report_pdf.md"
-
-            if target_ref and target_ref.exists():
-                try:
-                    with open(target_ref, "r", encoding="utf-8") as rf:
-                        hierarchical_section = f"\n\n---\n【分层按需载入场景规范 ({target_ref.name})】:\n" + rf.read().strip()
-                except Exception:
-                    pass
+        # 分层载入：统一经 skill_disclosure 按需加载 references 与章节切片
+        layered = build_layered_skill_body(
+            target_dir.name or clean_name,
+            body,
+            target_dir=target_dir,
+            prompt=prompt,
+            section=section,
+            max_chars=max_chars,
+        )
 
         sub_files = []
         for p in target_dir.rglob("*"):
@@ -331,6 +337,6 @@ def read_skill(skill_name: str, prompt: Optional[str] = None) -> str:
         if sub_files:
             addon = f"\n\n【技能附带资源与可用模版 (位于 {target_dir})】:\n" + "\n".join(f"- {f}" for f in sub_files[:15])
 
-        return body + hierarchical_section + addon
+        return layered["text"] + addon
     except Exception as e:
         return f"读取技能失败: {e}"

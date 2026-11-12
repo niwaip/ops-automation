@@ -21,6 +21,50 @@ def normalize_tool_name(raw_name: Any) -> str:
     return cleaned or "unknown"
 
 
+def format_client_safe_tool_preview(canonical_name: str, params: Dict[str, Any], preview_fn, max_chars: int) -> str:
+    """面向客户的工具调用参数语义脱敏，严禁泄露底层脚本、绝对路径或系统命令"""
+    if canonical_name in ("bash", "cmd", "terminal", "sh", "exec"):
+        cmd_raw = str(params.get("cmd") or params.get("command") or "").strip().lower()
+        if any(k in cmd_raw for k in ("xlsx", "spreadsheet", "excel", "ooxml_xlsx")):
+            return "高保真表格本地化与校验"
+        if any(k in cmd_raw for k in ("carbone", "pdf", "docx", "pptx", "render_")):
+            return "高保真文档排版与编译"
+        if any(k in cmd_raw for k in ("translate", "ooxml")):
+            return "高保真文档本地化与校验"
+        if any(k in cmd_raw for k in ("deep_research", "research", "hn", "github")):
+            return "多源深度调研与全网检索"
+        if any(k in cmd_raw for k in ("python", "python3", ".py")):
+            return "数据分析与计算"
+        if any(k in cmd_raw for k in ("git", "checkout", "commit", "branch")):
+            return "代码版本管理"
+        if any(k in cmd_raw for k in ("curl", "wget", "fetch", "http")):
+            return "网络数据获取"
+        return "执行环境处理任务"
+
+    if canonical_name in ("read_file", "write_file", "read_workspace_file", "write_workspace_file", "inspect_file"):
+        file_path = str(params.get("file_path") or params.get("path") or "").strip()
+        if file_path:
+            return f"'{os.path.basename(file_path)}'"
+        return "文档"
+
+    if canonical_name in ("aggregate_spreadsheet", "calculate_spreadsheet_analysis", "compare_spreadsheet_columns", "inspect_spreadsheet_structure"):
+        file_path = str(params.get("file_path") or params.get("target_file") or params.get("base_file") or "").strip()
+        if file_path:
+            return f"'{os.path.basename(file_path)}'"
+        return "表格数据核算"
+
+    raw_preview = (
+        params.get("__search_query") or
+        params.get("query") or
+        params.get("city") or
+        str(params)
+    )
+    raw_str = str(raw_preview)
+    if "/workspace/" in raw_str or "/opt/" in raw_str:
+        raw_str = re.sub(r'/(?:workspace|opt)/[^\s\'"]+/', '', raw_str)
+    return preview_fn(raw_str, max_chars=max_chars)
+
+
 def dispatch_tool_calls(
     structured_calls: List[Dict[str, Any]],
     round_idx: int,
@@ -109,14 +153,7 @@ def dispatch_tool_calls(
             })
             continue
 
-        raw_preview = (
-            t_params.get("__search_query") or
-            t_params.get("query") or
-            t_params.get("cmd") or
-            t_params.get("city") or
-            str(t_params)
-        )
-        clean_param = preview_fn(raw_preview, max_chars=policy.param_preview_chars)
+        clean_param = format_client_safe_tool_preview(canonical_name, t_params, preview_fn, policy.param_preview_chars)
         print(f"⚡ [Harness Tool Call] 正在调用工具: {canonical_name}({clean_param})...", flush=True)
 
         if is_guide_intent and canonical_name in ("bash", "cmd", "terminal", "sh", "exec"):
@@ -207,7 +244,8 @@ def dispatch_tool_calls(
                 domain_scope = (analysis_domain_scope(last_user_prompt) if canonical_name in {
                     'analyze_spreadsheet', 'aggregate_spreadsheet',
                     'check_spreadsheet_equations', 'validate_spreadsheet_rows'} else nullcontext())
-                with domain_scope:
+                from .document_reading_budget import native_read_budget
+                with domain_scope, native_read_budget(policy.max_tool_result_chars):
                     tool_res = execute_fn(canonical_name, t_params, deadline=deadline)
                 tool_res = validate_execution_output(last_user_prompt, tool_res)
                 status = "error" if error_fn(tool_res) else "success"

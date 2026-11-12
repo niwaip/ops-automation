@@ -1,0 +1,15 @@
+{
+  "testedAt": "2026-11-05T07:09:15.178Z",
+  "checks": {
+    "runnerHealthy": true,
+    "unauthenticatedAccessRejected": true,
+    "frontendServesQueryConfiguration": true,
+    "runningPlatformSavesQueryConfiguration": true,
+    "endpointContainsNoCredential": true,
+    "requiresSeparateUserCredential": true,
+    "rawUrlCredentialRejected": true
+  },
+  "thirdPartyMcpCalled": false,
+  "passed": true,
+  "temporaryConnectionRemoved": true
+}

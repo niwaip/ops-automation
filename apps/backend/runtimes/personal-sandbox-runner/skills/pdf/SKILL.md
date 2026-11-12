@@ -3,7 +3,7 @@ name: pdf
 zh_name: "PDF 文档设计与处理"
 description: "创建、排版、导出或处理 PDF，包括中文报告、讲义、手机阅读文档、Word 转 PDF 和表单填写。新建文档使用本地设计模板和 WeasyPrint，生成后检查文本、字体、分页并逐页查看预览。仅讨论代码或普通聊天时不生成文件。"
 tags: [pdf, document, report, docx-to-pdf, export-pdf, form-fill]
-triggers: [生成pdf, 导出pdf, 转为pdf, 转成pdf, pdf report, pdf表单, 填写pdf, 表单填报]
+triggers: [生成pdf, 导出pdf, 转为pdf, 转成pdf, pdf report, pdf表单, 填写pdf, 表单填报, 翻译pdf, pdf翻译, 翻译为pdf, 翻译成pdf]
 deliverables: [.pdf]
 requires_execution: true
 default_rounds: 5
@@ -15,11 +15,38 @@ default_rounds: 5
 
 | 任务 | 路径 |
 | --- | --- |
+| 既有 PDF 高保真翻译与版式保留 | 调用兼容CLI：布局理解 → 结构化翻译 → HTML/CSS重排 → 运行时逐页验收 |
 | 新建 PDF、Markdown/结构化数据排版 | 使用下方本地生成器；参数和 JSON 结构见 [report_pdf.md](references/report_pdf.md) |
 | 字体、配色、打印/手机版式选择 | 按需阅读 [design.md](references/design.md) |
 | Word 转 PDF，保留原版面 | [docx2pdf.md](references/docx2pdf.md) |
 | 填写交互式表单 | [forms.md](references/forms.md)，复用现有检查、提取和填写脚本 |
 | 阅读、提取、合并、拆分 | [processing.md](references/processing.md)；只读任务不生成额外报告 |
+
+## 既有 PDF 高保真翻译与版式保留
+
+内容完整与阅读顺序优先，在可读字号下尽量保留原章节、分栏和图文关系；允许自然跨页，不为固定页数删减内容。
+
+默认保留主要结构，不要求页数相同。转中文正文使用10.5pt，转英语、日语使用9.5pt，标题、表格与说明按对应层级调整；字号不随页数压力继续缩小。命令与URL保持连续，原始外链须在译文中可点击。普通标签即使带连字符或脚注数字也须翻译，脚注编号与正文绑定，图表、题注和说明作为关联组排版。
+
+```bash
+python3 /opt/dsh/skills/pdf/scripts/flow_pdf_translate.py auto \
+  /workspace/input.pdf /workspace/input_中文版.pdf --lang zh-CN
+```
+
+- 使用原生文字坐标和多模态布局分析建立文档IR，再按块翻译并通过受控HTML/CSS组件排版；无需现场编写python-docx或fitz脚本。
+- 首版受运行环境灰度开关控制。收到`engine_not_enabled`时说明尚未开放，应报告状态；不要自行设置环境变量绕过灰度或改走通用PDF生成器。
+- `candidate_ready`只代表隐藏候选生成，目标文件由运行时全部页验收通过后发布。不要查找目标不存在就重新生成，不发送隐藏候选或旧文件。
+- 图形保留完整区域，图中标签附中文译文；扫描件/无法可靠解析区域会明确失败，不猜测原文。严格图内替换需求不应宣称已满足。
+- `auto`的可恢复失败由运行时在同一任务deadline内按布局/翻译阶段各最多恢复一次，复用合格布局和译文；JSON协议失败也纳入同一预算。翻译先按失败ID做一次局部纠正，仍失败才续跑检查点，不重新解析整本。不要另行重试、查找旧PDF或复制历史候选。回执含`recovered_from`表示已执行恢复，仍失败就报告原因并停止。旋转边注与正文独立保留，不按普通段落翻译。检查点版本为layout-html/10，旧版本必须重新解析。
+- 翻译协议拒绝响应保存在当前Job的`translation-rejected/*.json`（权限0600），包含原始正文、call_id、结束标记与解析位置；批次attempt关联该记录，主调用guard记录协议失败，不能把`model_completed`等同于译文协议通过。
+- 单个PDF明确要求“保存格式不变”且未指定转为Word等格式时，输出类型按PDF约束修正；多文件、总结等复合任务及用户明确指定的其他格式保持原任务契约。
+- 逐页验收失败时，运行时启动受控局部修复回路，按节点ID重译或重建受影响表格，整本重排并复用内容未变页面的验收结果；最多进行3轮局部修复。未收敛或不可恢复错误整份拒绝发布。
+- 用户后续明确要求继续时，才用`auto INPUT OUTPUT --resume <工具回执中的resume_dir>`恢复；参数是`--resume`，不存在`--resume-dir`。没有`resume_dir`不得猜测目录。命令单独执行，不附加echo、分号或其他命令；运行时拒绝会掩盖退出状态的包装。禁止手改source.ir.json。
+- 分步流程：`unpack INPUT WORKDIR`使用新的空目录，生成版本化检查点；随后可用`auto INPUT OUTPUT --resume WORKDIR`自动翻译。手动`pack WORKDIR OUTPUT`必须先完整填写按节点/单元格ID映射的`WORKDIR/translated.json`，并通过校验；pack不负责翻译。不存在`auto --unpack`参数，不猜测IR字段或反复检查不存在的blocks。
+- 表格优先使用原文横线和文字坐标建立固定行列、列宽及合并关系；模型不得重新分配原生单元格。无法核实的表格结构拒绝发布，不按空格顺序补填。
+- 候选就绪立即交接运行时；相同输入、输出、语言与布局的重复auto复用本轮有效候选，不再次翻译。表格实质缺陷不能用另一次PASS投票覆盖。
+- 保留auto/unpack/pack入口；`--layout balanced`默认尽量保原结构，`reading`单栏阅读，`preserve`检查原页数约束；不承诺像素级位置不变。
+- 失败按结构化错误有限修复，连接失败、漏译或缺键不能报成功；禁止把错误说明编成替代PDF。原稿与旧合格输出不得被未验收候选覆盖。
 
 ## 新建文档
 

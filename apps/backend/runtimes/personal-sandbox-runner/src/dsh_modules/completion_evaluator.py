@@ -136,6 +136,11 @@ def evaluate_tool_execution_turn(
         return False, None, max_rounds
 
     effective_workspace = workspace_dir or os.environ.get("WORKSPACE_DIR", "/workspace")
+    from .pdf_translation_bridge import has_pdf_translation
+    if telemetry is not None and has_pdf_translation(telemetry):
+        # Hidden candidates/failures belong to the existing post-loop PDF gate.
+        # Do not misclassify a deliberately unpublished file as unexecuted work.
+        return CompletionDecision('pass', None, max_rounds, category='pdf_translation_pending')
 
     # 1. 物理外发文件实质性核验（必须在磁盘上真实存在且大小 > 0）
     has_physical_outbound = False

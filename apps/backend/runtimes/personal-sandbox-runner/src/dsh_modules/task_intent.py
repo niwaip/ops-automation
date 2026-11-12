@@ -7,12 +7,13 @@ from .semantic_decision import structured_decision, ground_user_quote
 PHYSICAL_EXPORT_RE = re.compile(
     r'(?:'
     r'导出|下载|保存为|保存到|落盘|写入|'
-    r'(?:生成|制作|创建|输出|做个|做一份).*(?:文件|文档|报表|表格文件|excel|word|pdf|ppt|pptx|docx|xlsx|csv|html|markdown|\.md|\.txt|\.json)|'
+    r'(?:生成|制作|创建|输出|做个|做一份|变成|转为|转成|转换为|换成|改写成).*(?:文件|文档|报表|表格文件|excel|word|pdf|ppt|pptx|docx|xlsx|csv|html|markdown|\.md|\.txt|\.json)|'
+    r'(?:翻译|翻成|译成).*(?:成|为|做|到)?.*(?:文件|文档|word|docx|pdf|ppt|pptx|excel|xlsx)|'
     r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|报表|表格|工作簿|预测|副本|快照)|'
     r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:表格|工作簿|sheet|工作表|预测|单元格|数据|数值|指标|明细)|'
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
     r'\.(?:xlsx|docx|pdf|pptx|csv|json|html|txt)\b|'
-    r'(?:excel|word|pdf|ppt|pptx|docx|xlsx)\s*文件|'
+    r'(?:excel|word|pdf|ppt|pptx|docx|xlsx)\s*(?:文件|文档|文书|报告)|'
     r'(?:^|\s)/(?:pdf|docx|xlsx|pptx|word|excel|ppt)\b|'
     r'可下载'
     r')',
@@ -85,12 +86,17 @@ def is_physical_export_negated(text: str) -> bool:
     return bool(EXPORT_NEGATION_RE.search(text))
 
 
-def has_physical_artifact_request(text: str) -> bool:
+def has_physical_artifact_request(text: str, attached_files=None) -> bool:
     if not text or not isinstance(text, str):
         return False
     if is_physical_export_negated(text):
         return False
-    return bool(PHYSICAL_EXPORT_RE.search(text) or VISUAL_EXPORT_RE.search(text))
+    if PHYSICAL_EXPORT_RE.search(text) or VISUAL_EXPORT_RE.search(text):
+        return True
+    if attached_files:
+        from .intent_contract import is_attachment_in_place_translation
+        return is_attachment_in_place_translation(text, attached_files)
+    return False
 
 
 def is_visual_artifact_requested(text: str) -> bool:

@@ -13,6 +13,7 @@ import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.se
 import { ModelInvocationLedgerService } from '../../experience-learning/model-invocation-ledger.service';
 import { executeContractReviewOrchestration } from './contract/contract-review-orchestrator';
 import { executeContractCompareOrchestration } from './contract/contract-compare-orchestrator';
+import { executeMcpTool } from './mcp/mcp-invoke.handler';
 import {
   DEFAULT_REMINDER_TIMEZONE,
   REMINDER_CAPABILITY_KEY,
@@ -70,6 +71,7 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   }
 
   private registerDefaultHandlers(): void {
+    this.registerHandler('integration.mcp.invoke', executeMcpTool);
     // 1. Markdown Artifact Writer Handler
     this.registerDocumentDomainHandler(
       'document.markdown-artifact-writer',

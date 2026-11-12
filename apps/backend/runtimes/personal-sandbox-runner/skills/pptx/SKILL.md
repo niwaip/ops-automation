@@ -18,6 +18,10 @@ triggers:
   - "导出pptx"
   - "做个ppt"
   - "制作ppt"
+  - "翻译ppt"
+  - "翻译pptx"
+  - "ppt翻译"
+  - "翻译幻灯片"
 deliverables:
   - ".pptx"
 requires_execution: true
@@ -129,10 +133,67 @@ prs.save(out_file)
 print(f"PPTX 成功生成并保存至: {out_file}")
 ```
 
+### 场景二：已有 PPTX 高保真翻译与多语言替换（保持格式 100% 不变）
+
+> ⚠️ **严禁规则**：
+> 1. **附件路径规则**：沙箱中用户上传的附件均直接位于工作区 `/workspace/<文件名>.pptx`，**严禁猜测 `/mnt` 等不存在的路径**，若不确定文件名先 `ls /workspace` 确认；
+> 2. **绝对禁止**由模型自主编写 `python-pptx` 的 Run 级 `replace` 脚本（会导致文字断裂、短词劫持与漏翻译）；
+> 3. **绝对禁止**模型在 bash 循环中手动编写数十 KB 的 Python 字典或代码！
+> 4. 必须使用沙箱内置的高性能 OOXML 翻译引擎：`/opt/dsh/skills/pptx/scripts/ooxml_translate.py`。
+
+#### 推荐方案：一键全自动端到端翻译（耗时最短、体验最优）
+直接调用 `bash` 执行沙箱内置的一键翻译流水线，脚本会自动执行解包、并发模型批量翻译、智能排版保护与格式打包：
+
+- **翻译为英文演示文稿 (English)**：
+  ```bash
+  python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \
+    "/workspace/<输入文件>.pptx" \
+    "/workspace/<输出文件>.pptx" \
+    --lang en-US --font 'Calibri'
+  ```
+- **翻译为日文演示文稿 (Japanese)**：
+  ```bash
+  python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \
+    "/workspace/<输入文件>.pptx" \
+    "/workspace/<输出文件>.pptx" \
+    --lang ja-JP --font 'Yu Gothic'
+  ```
+该命令内置多语言行业专业术语库、多线程并发与排版敏感型紧凑翻译法则，自动启用版面自适应与字号动态保护，可在数十秒内完成数十页 PPT 的完整高保真本地化！
+
+#### 备用方案：分步流水线法
+如需中间干预或查看译文数据：
+1. **第 1 步：解包提取待翻译 JSON 字典**
+   ```bash
+   python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py unpack "/workspace/<输入文件>.pptx" --out-json /workspace/translation_input.json --temp-dir /workspace/.ooxml_temp
+   ```
+2. **第 2 步：并发批量翻译**
+   ```bash
+   python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py translate /workspace/translation_input.json /workspace/translation_output.json --lang en-US
+   ```
+3. **第 3 步：注入并重新打包**
+   ```bash
+   python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py pack /workspace/.ooxml_temp /workspace/translation_output.json "/workspace/<输出文件>.pptx" --lang en-US --font 'Calibri'
+   ```
+
+4. **第 4 步：面向用户的友好交付回复规范（【极简精悍原则，篇幅控制在 250~350 字以内】）**
+   当打包与校验完成后，在聊天窗口向用户进行交付汇报时，必须采用**面向最终商务用户（业务汇报人、演示者）的精炼、专业视角**，内容务必简洁干练，避免长篇累赘：
+   - 🚫 **红线约束**：
+     - **严禁输出关键术语对照字典**：严禁罗列“术语 -> 译文”对照列表，用户需要的是业务交付成果说明，不是字典；
+     - **拒绝冗长流水账**：严禁把几十页逐一列出琐碎小要点，严禁大篇幅堆砌长表格；
+     - **严禁输出测试员暗语**：严禁在回复中直接堆砌命令行参数、内部函数或协议名（如 `--shrink-font`、`--auto-fit`、`normAutofit`、`解包/打包` 等底层名词）；
+     - **严禁泄露容器路径**：严禁在回复末尾或正文中直接展示 `/workspace/` 等内部沙箱物理路径；
+     - **严禁虚假承诺与语言错位**：如果用户要求的是英文版，严禁输出日文内容；交付前必须确保文件语言与用户要求一致！
+   - ✅ **标准商务交付结构（四段式，清新明快）**：
+     1. **任务完成状态（## ✅ 演示文稿翻译完成）**：明确说明演示文稿已完成高保真本地化与智能版面优化；
+     2. **主要处理内容（### 📋 主要处理内容）**：概述全量幻灯片页面的标题、核心论点卡片、列表条目及图表文本框的翻译与排版折行优化；
+     3. **交付成果物（### 📦 交付成果物）**：列明交付文件名，明确原版母版背景、配色方案、矢量图表与排版结构 100% 完整保留，引导用户点击卡片下载；
+     4. **提示与使用建议 / 警告（### 💡 提示与使用建议）**：说明统一配置跨平台商务字体（日文 Yu Gothic / 英文 Calibri），提示可在 Office/WPS 中根据实际业务需求个性化微调。
+   - ⚠️ **失败场景规范**：若执行异常或无法生成文件，严禁输出“执行错误达到上限”等内部暗语；必须按【⚠️ 目标文件未能成功生成】明确说明原因，并提供 3 条清晰可操作的下一步建议。
+
 ---
 
 ## 3. 注意事项
 
 1. **避免输出未执行源码**：除非用户明确要求查看 Python 源码，否则不要向用户返回代码块，直接调用 `bash` 工具运行生成。
 2. **文本自动换行**：添加文本框后务必设置 `text_frame.word_wrap = True`，防止文字溢出幻灯片边界。
-3. **交付物通知**：生成完成后，直接告知用户文件已生成保存至 `/workspace/<文件名>.pptx`，用户界面将自动挂载下载卡片。
+3. **交付物通知**：生成完成后，遵循第 4 步交付规范给出清晰、友好的用户导读，用户界面将自动挂载下载卡片。

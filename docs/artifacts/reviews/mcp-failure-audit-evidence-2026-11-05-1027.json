@@ -1,0 +1,113 @@
+{
+  "session": {
+    "id": "chat-session-1793845500138-bq8e9zrz",
+    "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "status": "active",
+    "channel": "local",
+    "createdAt": "2026-11-05T02:27:11.796Z",
+    "updatedAt": "2026-11-05T02:27:11.797Z",
+    "title": "用Microsoft Learn mcp 查找"
+  },
+  "answer": "本次未取得成功的 MCP 调用结果，无法据此提供已核实的答案。请检查连接状态后重试。",
+  "answerTime": "2026-11-05T02:27:11.797Z",
+  "trace": {
+    "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "harness": "deepseek-harness",
+    "executed": true,
+    "durationMs": 124155,
+    "exitCode": 0,
+    "metrics": {
+      "ttftMs": 3267.08,
+      "ttftScope": "model_request",
+      "durationMs": 123539.47,
+      "llmDurationMs": 3267.38,
+      "toolCallsCount": 1,
+      "toolCalls": [
+        {
+          "name": "read_skill",
+          "params": {
+            "skill_name": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        }
+      ],
+      "llmInvocations": 1,
+      "tokens": {
+        "prompt_tokens": 2124,
+        "completion_tokens": 62,
+        "total_tokens": 2186
+      },
+      "finishReason": "tool_calls",
+      "roundFinishReasons": [
+        "tool_calls"
+      ],
+      "guardDecisions": [
+        {
+          "guard": "user_unit_confirmation",
+          "action": "accept",
+          "reason": {
+            "unit": null,
+            "sections": null
+          }
+        },
+        {
+          "guard": "model_repetition_breaker",
+          "action": "tripped",
+          "reason": {
+            "pattern_len": 65,
+            "repeat_count": 3,
+            "target": "content"
+          }
+        }
+      ],
+      "modelResponses": [
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        }
+      ],
+      "answerValidation": {},
+      "callsLedger": [
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 3267.38,
+          "usage": {
+            "prompt_tokens": 2124,
+            "total_tokens": 2186,
+            "completion_tokens": 62
+          },
+          "span_id": null,
+          "call_id": "ac8aa0e502e942ce80a1ecb4cf47b273"
+        }
+      ],
+      "auxiliaryInvocations": 0
+    },
+    "artifacts": []
+  },
+  "calls": [],
+  "connection": {
+    "id": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+    "name": "Microsoft Learn（公开测试）",
+    "endpoint": "https://learn.microsoft.com/api/mcp"
+  },
+  "bindings": [
+    {
+      "id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "remoteName": "microsoft_docs_search",
+      "effect": "read"
+    },
+    {
+      "id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "remoteName": "microsoft_docs_fetch",
+      "effect": "read"
+    }
+  ]
+}

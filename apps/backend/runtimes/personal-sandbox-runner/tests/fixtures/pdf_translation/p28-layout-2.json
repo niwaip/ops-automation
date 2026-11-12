@@ -1,0 +1,102 @@
+{
+  "columns": 1,
+  "blocks": [
+    {
+      "type": "table",
+      "line_ids": [
+        "p28_g1"
+      ],
+      "bbox": [
+        172.0,
+        350.0,
+        500.0,
+        360.0
+      ],
+      "column": 0
+    },
+    {
+      "type": "table",
+      "line_ids": [
+        "28_t1"
+      ],
+      "bbox": [
+        108.0,
+        370.0,
+        504.0,
+        662.0
+      ],
+      "column": 0,
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "rowspan": 1,
+          "colspan": 2,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "rowspan": 1,
+          "colspan": 2,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 1,
+          "col": 3,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": []
+        },
+        {
+          "row": 1,
+          "col": 4,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": []
+        }
+      ]
+    },
+    {
+      "type": "furniture",
+      "line_ids": [
+        "p28_g99"
+      ],
+      "bbox": [
+        301.02,
+        742.08,
+        310.98,
+        752.04
+      ],
+      "column": 0
+    }
+  ]
+}

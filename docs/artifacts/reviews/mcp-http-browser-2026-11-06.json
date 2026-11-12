@@ -1,0 +1,11 @@
+{
+  "testedAt": "2026-11-06T02:19:59.440Z",
+  "passed": true,
+  "connectionId": "8a85b34a-cd3b-49c3-ab20-b7d26f20737e",
+  "name": "http-browser-verification-1793931487070",
+  "endpoint": "http://localhost:9000/mcp",
+  "saveStatus": 201,
+  "discoverStatus": 201,
+  "readOnlyFixtureDiscovered": true,
+  "temporaryConnectionRemoved": true
+}

@@ -51,7 +51,7 @@ from .reminder_tools import (
     delete_personal_reminders,
     update_personal_reminder,
 )
-from .deliverable_contract import write_markdown_artifact
+from .deliverable_contract import write_markdown_artifact, write_json_artifact
 from .comparison_tool_schema import COMPARISON_TOOL
 from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ADVANCED_ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
 from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
@@ -59,8 +59,10 @@ from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
 from .pdf_render_tool import PDF_RENDER_TOOL
 from .pdf_preview_tool import PDF_PREVIEW_TOOL
 from .docx_render_tool import DOCX_RENDER_TOOL
+from .mcp_tools import MCP_TOOLS, MCP_TOOL_NAMES, execute_mcp_tool
 
 SANDBOX_TOOLS = [
+    *MCP_TOOLS,
     DOCX_RENDER_TOOL,
     PDF_RENDER_TOOL,
     PDF_PREVIEW_TOOL,
@@ -129,7 +131,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "读取沙箱工作区或知识库中的文件内容（支持代码文件、文本、markdown、docx、xlsx、pptx、pdf、json 等，支持行号切片查看大文件）",
+            "description": "读取工作区文件或检索结果中的 personal-knowledge:// 个人资料原件。支持行号续读；本地PDF可按页或bbox复核，页码/区域与行号不可混用。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -144,6 +146,19 @@ SANDBOX_TOOLS = [
                     "end_line": {
                         "type": "integer",
                         "description": "结束行号（可选，包含该行，用于分片读取长文件）"
+                    },
+                    "start_page": {
+                        "type": "integer", "minimum": 1,
+                        "description": "PDF起始页，从1开始。仅给此值时读取该单页。"
+                    },
+                    "end_page": {
+                        "type": "integer", "minimum": 1,
+                        "description": "PDF结束页，包含该页；与start_page指定连续范围。"
+                    },
+                    "bbox": {
+                        "type": "array", "items": {"type": "number"},
+                        "minItems": 4, "maxItems": 4,
+                        "description": "PDF单页区域[x0,top,x1,bottom]，单位为PDF点，左上为原点。必须指定单个start_page；可使用正文区域标注的坐标。"
                     },
                     "sheet": {
                         "type": "string",
@@ -207,6 +222,31 @@ SANDBOX_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "write_json",
+            "description": "将结构化数据或 JSON 文本安全校验并格式化写入沙箱工作区的 .json 文件。写入前会自动进行完整的 JSON 语法校验（检查引号转义、括号闭合与多余逗号），确保生成的 JSON 文件 100% 合法可用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "工作区内的 JSON 文件名或路径，例如 translation_output.json"
+                    },
+                    "content": {
+                        "type": ["string", "object", "array"],
+                        "description": "要写入的 JSON 内容（支持 JSON 格式字符串，或直接传递对象/数组）"
+                    },
+                    "indent": {
+                        "type": "integer",
+                        "description": "格式化缩进空格数，默认为 2"
+                    }
+                },
+                "required": ["file_path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "bash",
             "description": "在沙箱隔离 Linux 环境执行 Shell 命令行指令（如 python3, curl, jq, git, cat 等）",
             "parameters": {
@@ -225,10 +265,10 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "scan_knowledge",
-            "description": "扫描并读取挂载的个人知识库 (/knowledge) 及个人成果库 (/workspace/deliverables) 中的参考文档与沉淀成果条目",
+            "description": "检索个人空间统一管理的资料原件和标签，返回来源链接及可供 read_file 继续读取的资料标识。",
             "parameters": {
                 "type": "object",
-                "properties": {}
+                "properties": {"query": {"type": "string", "description": "要检索的主题；省略时浏览个人资料"}}
             }
         }
     },
@@ -243,6 +283,10 @@ SANDBOX_TOOLS = [
                     "skill_name": {
                         "type": "string",
                         "description": "技能名称，例如 'guizang-ppt'"
+                    },
+                    "section": {
+                        "type": "string",
+                        "description": "可选：按需展开的细则模块或章节标题（例如 xlsx 的 'translation'、'audit'、'generation'、'inspection'）"
                     }
                 },
                 "required": ["skill_name"]
@@ -274,7 +318,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "vision_inspect",
-            "description": "检查并深度分析沙箱工作区或知识库中的图片或多页 PDF 视觉内容（支持 png, jpg, jpeg, webp 等图片以及扫描/画册型 pdf 的 OCR、排版与视觉理解）。对多页 PDF 支持以 2 列高清网格平铺批量阅读（推荐单次传入 2~4 页范围，例如 '1-4'、'5-8'）。",
+            "description": "识别图片、扫描件/OCR或图片占比高的PDF，以及用户明确要求的图表/版式。普通文本PDF须优先用read_file分段阅读，不能因为文本截断改用视觉。每次PDF最多4页，按实际返回页码继续读取。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -284,7 +328,7 @@ SANDBOX_TOOLS = [
                     },
                     "page": {
                         "type": ["integer", "string"],
-                        "description": "可选。针对 PDF 文档时指定的页码（例如 1 或 2）或页码范围（例如 '1-4'、'5-8'、'all'）。单次推荐最多指定 4 页以保证文字清晰度与响应时效。"
+                        "description": "可选。PDF页码或连续范围，例如1、'1-4'、'5-8'；每次最多4页，超过会拒绝。all仅请求开头最多4页，并不代表全文。"
                     },
                     "prompt": {
                         "type": "string",
@@ -467,6 +511,8 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         remaining = None
 
     name_clean = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', tool_name.strip()).lower()
+    if name_clean in MCP_TOOL_NAMES:
+        return execute_mcp_tool(name_clean, params, deadline)
     if name_clean == "search_web":
         name_clean = "web_search"
     res = ""
@@ -517,11 +563,33 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
     elif name_clean in ["write_markdown", "write_md", "save_markdown"]:
         file_path = params.get("file_path") or params.get("path") or params.get("filename") or "result.md"
         content = params.get("content") or params.get("markdown") or params.get("text") or ""
+        # 智能重定向：若模型误用 write_markdown 写入 json 文件，自动转由 write_json 校验并写入
+        if str(file_path).lower().endswith(".json"):
+            try:
+                res = write_json_artifact(WORKSPACE_DIR, str(file_path), content)
+            except Exception as e:
+                from .tool_result import ToolResult, TextToolOutput
+                error = ToolResult.error('json_validation_failed', f"写入 JSON 文件失败: {e}",
+                                         provenance={'tool': name_clean})
+                res = TextToolOutput(error.render_text(), error)
+        else:
+            try:
+                res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+            except Exception as e:
+                from .tool_result import ToolResult, TextToolOutput
+                error = ToolResult.error('artifact_write_failed', f"写入 Markdown 文件失败: {e}",
+                                         provenance={'tool': name_clean})
+                res = TextToolOutput(error.render_text(), error)
+
+    elif name_clean in ["write_json", "save_json", "create_json"]:
+        file_path = params.get("file_path") or params.get("path") or params.get("filename") or "data.json"
+        content = params.get("content") if "content" in params else (params.get("json") or params.get("data") or "")
+        indent = int(params.get("indent") or 2)
         try:
-            res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+            res = write_json_artifact(WORKSPACE_DIR, str(file_path), content, indent=indent)
         except Exception as e:
             from .tool_result import ToolResult, TextToolOutput
-            error = ToolResult.error('artifact_write_failed', f"写入 Markdown 文件失败: {e}",
+            error = ToolResult.error('json_validation_failed', f"写入 JSON 文件失败: {e}",
                                      provenance={'tool': name_clean})
             res = TextToolOutput(error.render_text(), error)
 
@@ -576,18 +644,27 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         except (ValueError, TypeError):
             e_val = None
         prompt_val = params.get("prompt") or params.get("query") or params.get("instruction") or None
+        if Path(str(fpath)).suffix.lower() == '.pdf':
+            # Do not turn an invalid explicit PDF selection into an implicit full read.
+            s_val = params.get('start_line', s_val)
+            e_val = params.get('end_line', e_val)
         sheet_val = params.get("sheet") or params.get("sheet_name") or None
         range_val = params.get("range") or params.get("cell_range") or None
         current_model = os.environ.get("DSH_MODEL") or None
+        from .document_reading_budget import read_budget
         res = read_workspace_file(
             str(fpath),
+            max_chars=read_budget(),
             start_line=s_val,
             end_line=e_val,
             deadline=deadline,
             model_name=current_model,
             prompt=prompt_val,
             sheet_name=sheet_val,
-            cell_range=range_val
+            cell_range=range_val,
+            start_page=params.get('start_page'),
+            end_page=params.get('end_page'),
+            bbox=params.get('bbox'),
         )
 
     elif name_clean in ["patch_file", "replace_content", "patch", "edit_file", "replace_in_file"]:
@@ -644,7 +721,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             params.get("skill") or
             (str(list(params.values())[0]) if params else "")
         )
-        res = read_skill(skill_name)
+        section = params.get("section") or params.get("chapter") or None
+        prompt_hint = params.get("prompt") or None
+        res = read_skill(skill_name, prompt=prompt_hint, section=section)
 
     elif name_clean in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat", "send_document", "deliver_file", "push_file"]:
         fpath = (

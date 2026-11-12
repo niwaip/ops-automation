@@ -2,7 +2,7 @@
 import json
 
 
-def build_summary_messages(prompt, messages, evidence=None, max_chars=18000):
+def build_summary_messages(prompt, messages, evidence=None, max_chars=18000, system_instruction=None):
     records = []
     for receipt in (evidence or [])[-6:]:
         data = getattr(receipt, 'data', None)
@@ -19,8 +19,17 @@ def build_summary_messages(prompt, messages, evidence=None, max_chars=18000):
         records = [str(m.get('content') or '')[:6000] for m in messages[-6:]
                    if m.get('role') in ('tool', 'assistant') and m.get('content')]
     context = '\n\n'.join(records)[-max_chars:]
+
+    if system_instruction:
+        sys_content = system_instruction
+    else:
+        sys_content = (
+            '请根据已执行结果面向用户给出清晰、专业、完整的最终交付答复：'
+            '说明任务完成情况、核心成果与关键内容摘要，并给出实用的使用或检查建议。'
+            '严禁忽略完成成果仅输出警告，严禁生硬堆砌底层技术指令。'
+        )
+
     return [
-        {'role': 'system', 'content': '根据已执行结果给出简短最终答复：结果、重要警告、必要下一步。'
-         '不重写完整报告，不添加新数字或成功声明。材料不足时明确说明，不补造。'},
+        {'role': 'system', 'content': sys_content},
         {'role': 'user', 'content': '用户要求：' + str(prompt)[:3000] + '\n已执行结果（可能为节选）：\n' + context},
     ]

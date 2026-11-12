@@ -20,7 +20,16 @@ export class ExecutionWatchdog {
     this.buffer += chunk;
     const lines = this.buffer.split('\n');
     this.buffer = (lines.pop() || '').slice(-128);
-    if (lines.some(line => line.trim() === '<<<DSH_PROGRESS>>>')) {
+    if (lines.some(line => {
+      const trimmed = line.trim();
+      return (
+        trimmed === '<<<DSH_PROGRESS>>>' ||
+        trimmed.startsWith('✓') ||
+        trimmed.startsWith('⚡') ||
+        trimmed.includes('本地化处理进度') ||
+        trimmed.includes('正在调用工具')
+      );
+    })) {
       clearTimeout(this.timer);
       this.timer = this.arm();
     }

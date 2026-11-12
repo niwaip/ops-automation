@@ -60,7 +60,45 @@ def is_weather_inquiry(prompt: str, skill_res: Any = None) -> bool:
     return any(re.search(pat, prompt, re.I) for pat in weather_query_patterns) or bool(WEATHER_RE.search(prompt) and not is_gen)
 
 
-def select_active_tools(
+def is_document_translation_task(prompt: str, skill_res: Any = None) -> bool:
+    """Checks whether the task is an existing document/presentation multi-language translation task.
+
+    In these tasks, the execution pattern is deterministic:
+    extract strings -> read JSON -> translate & write JSON -> rebuild target document.
+    Exposing tools outside {bash, read_file, write_json} creates cognitive noise,
+    wastes schema tokens (~1,500 chars / ~370+ tokens), and induces hallucinated tool calls (e.g. write_markdown).
+    """
+    if not prompt or not isinstance(prompt, str):
+        return False
+    if is_text_only_request(prompt):
+        return False
+
+    lower = prompt.lower()
+    is_trans = bool(re.search(
+        r'翻译|日文版|日语版|英文版|法文版|德文版|俄文版|韩文版|西文版|本地化|多语言|\btranslat(?:e|ion)\b|\blocaliz(?:e|ation)\b',
+        lower
+    ))
+    if not is_trans:
+        return False
+
+    # 纯咨询/探讨/教程/建议类问题，排除在落地生成流水线外
+    if re.search(r'(?:介绍|讲解|有哪些|注意事项|建议|攻略|指南|教程|怎么做|如何做)', lower) and not re.search(r'(?:帮我|给我|生成|输出|制作|落地|执行|导出)', lower):
+        return False
+
+    delivs = [str(d).lower() for d in (getattr(skill_res, "deliverables", None) or [])]
+    has_doc_deliverable = any(d.endswith(('.pptx', '.ppt', '.docx', '.doc', '.xlsx', '.xls', '.pdf')) for d in delivs)
+    skill_id = getattr(skill_res, "skill_id", "") or ""
+
+    has_doc_keyword = bool(re.search(
+        r'ppt|pptx|word|docx|excel|xlsx|幻灯片|演示文稿|文档|文件|presentation|slides|attachment',
+        lower
+    ))
+    has_attachment = bool(re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】', prompt))
+
+    return bool(has_doc_deliverable or skill_id in ('pptx', 'docx', 'xlsx', 'presentation') or has_doc_keyword or has_attachment)
+
+
+def _select_native_tools(
     prompt: str,
     skill_res,
     is_search_intent: bool,
@@ -74,6 +112,14 @@ def select_active_tools(
     """
     if is_network_search_forbidden(prompt):
         has_web_search_permission = False
+
+    # A selected remote skill uses its controlled gateway, not generic local execution.
+    if (getattr(skill_res, 'disclosure_steps', 0) and not skill_res.is_generate_intent
+            and not skill_res.requires_execution):
+        allowed = {'read_skill'}
+        if getattr(skill_res, 'source_formats', []):
+            allowed.add('read_file')
+        return get_sandbox_tools(allowed_names=allowed)
 
     # 1. 纯 PDF 模版/查阅流水线
     if is_retrieval_pdf_task(skill_res):
@@ -101,6 +147,20 @@ def select_active_tools(
         allowed = {'render_docx', 'read_file'}
         if getattr(skill_res, 'is_send_intent', False):
             allowed.add('send_file')
+        return get_sandbox_tools(allowed_names=allowed)
+
+    # 2.5 已有文档/演示文稿多语言翻译与本地化专用流水线
+    # 严格将工具面裁减收敛至极限核心三工具 {"bash", "read_file", "write_json"}：
+    # 仅允许执行 OOXML 提取与重构脚本、读取提取的待译文本、校验并落盘翻译字典。
+    # 彻底剥离 write_markdown、patch_file、web_search、fetch_page 等无关工具，降低 30%~40% TTFT 并根除误调。
+    if is_document_translation_task(prompt, skill_res):
+        allowed = {"bash", "read_file", "write_json"}
+        if getattr(skill_res, "skill_id", None) and not (getattr(skill_res, "skill_context", "") or "").strip():
+            allowed.add("read_skill")
+        if is_search_intent and has_web_search_permission:
+            allowed.update({"web_search", "fetch_page"})
+        if getattr(skill_res, "is_send_intent", False):
+            allowed.add("send_file")
         return get_sandbox_tools(allowed_names=allowed)
 
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
@@ -241,6 +301,8 @@ def select_active_tools(
     # 8. 复杂生成、组合任务或明确需要物理落盘产物的技能：采用智能分层按需剪枝，杜绝无脑注入全部28个工具
     elif not is_text_only_request(prompt) and (is_modify or is_custom_edit or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent)):
         allowed = {"bash", "read_file"}
+        if getattr(skill_res, "has_unloaded_sections", False):
+            allowed.add("read_skill")
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
         if getattr(skill_res, "is_send_intent", False):
@@ -274,6 +336,13 @@ def select_active_tools(
         if is_modify or is_custom_edit:
             allowed.add("patch_file")
 
+        # JSON 结构化数据或多语言翻译字典落盘
+        if (
+            any(d.endswith(".json") for d in delivs)
+            or any(k in p_lower for k in ["json", ".json", "翻译", "日语版", "日文版", "英文版", "本地化", "多语言"])
+        ):
+            allowed.add("write_json")
+
         # 表格数据核算与分析 (Spreadsheet / Tabular Analysis)
         if has_spreadsheet_analysis_input(skill_res) or any(k in p_lower for k in ["excel", "xlsx", "csv", "表格", "工作表", "sheet", "工数", "工时", "核算", "统计", "明细", "财务"]):
             from .spreadsheet_analysis_schema import ANALYSIS_TOOL_NAMES
@@ -289,7 +358,7 @@ def select_active_tools(
 
         # 通用兜底：若未命中特定文档/表格领域，保留通用写盘工具以支持脚本与配置输出
         if not (allowed & {"render_docx", "render_pdf", STRUCTURE_TOOL_NAME}):
-            allowed.update({"write_markdown", "patch_file"})
+            allowed.update({"write_markdown", "write_json", "patch_file"})
 
         tools = get_sandbox_tools(allowed_names=allowed)
     else:
@@ -328,12 +397,82 @@ def select_active_tools(
             more_tools = get_sandbox_tools(allowed_names=needed_inspect)
             tools.extend(more_tools)
 
-    if skill_res.skill_id and getattr(skill_res, "skill_context", ""):
-        # The router already injected this skill's contract into the prompt.
-        # Keeping read_skill available invites small models to spend another
-        # round rereading the same long document or switching formats.
+    if (
+        skill_res.skill_id
+        and getattr(skill_res, "skill_context", "")
+        and not getattr(skill_res, "has_unloaded_sections", False)
+    ):
+        # Keep read_skill available when the injected skill only revealed a layered
+        # overview/partial sections so the model can inspect remaining sections on demand.
         tools = [
             tool for tool in tools
             if tool.get("function", {}).get("name") != "read_skill"
         ]
+    return tools
+
+
+def _is_pure_local_attachment_inspect(
+    prompt: str,
+    skill_res,
+    is_search_intent: bool,
+    session_files: Optional[list],
+    mcp_skills: Optional[list],
+) -> bool:
+    """Returns True when inspecting local attachments only without search, generation, knowledge, or MCP intent."""
+    if not session_files:
+        return False
+    if is_search_intent or getattr(skill_res, 'is_research_intent', False):
+        return False
+    if not getattr(skill_res, 'is_inspect_intent', False):
+        return False
+    if (
+        getattr(skill_res, 'is_generate_intent', False)
+        or getattr(skill_res, 'requires_execution', False)
+        or getattr(skill_res, 'is_modify_intent', False)
+        or getattr(skill_res, 'is_knowledge_intent', False)
+        or getattr(skill_res, 'is_send_intent', False)
+        or getattr(skill_res, 'disclosure_steps', 0)
+        or getattr(skill_res, 'mcp_read_only', False)
+    ):
+        return False
+    p_low = (prompt or '').lower()
+    active_sid = str(getattr(skill_res, 'skill_id', '') or '').lower()
+    for sk in (mcp_skills or []):
+        sid = str(sk.get('id') or '').lower()
+        if sid and sid == active_sid:
+            return False
+        for term in [sk.get('name'), *(sk.get('aliases') or []), *(sk.get('triggers') or [])]:
+            t = str(term or '').strip().lower()
+            if len(t) >= 2 and t in p_low:
+                return False
+    return True
+
+
+def select_active_tools(prompt, skill_res, is_search_intent, has_web_search_permission,
+                        session_files=None, attachment_profiles=None, complete_files=None):
+    """Merge discovery after every native branch, including document/analysis fast paths."""
+    tools = _select_native_tools(prompt, skill_res, is_search_intent, has_web_search_permission)
+    from .visual_reading_policy import filter_reading_tools
+    tools = filter_reading_tools(
+        tools,
+        prompt,
+        skill_res,
+        is_search_intent,
+        files=session_files,
+        profiles=attachment_profiles,
+        complete_files=complete_files,
+    )
+    if is_document_translation_task(prompt, skill_res):
+        return tools
+    if not is_network_search_forbidden(prompt) and os.environ.get('DSH_MCP_ENABLED', 'true').lower() == 'true':
+        from .mcp_tools import MCP_TOOL_NAMES
+        from .mcp_skill_catalog import available_mcp_skills
+        mcp_skills = available_mcp_skills()
+        if mcp_skills and not _is_pure_local_attachment_inspect(
+            prompt, skill_res, is_search_intent, session_files, mcp_skills
+        ):
+            existing = {t.get('function', {}).get('name') for t in tools}
+            missing = (MCP_TOOL_NAMES | {'read_skill'}) - existing
+            if missing:
+                tools.extend(get_sandbox_tools(allowed_names=missing))
     return tools

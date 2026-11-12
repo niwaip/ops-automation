@@ -1,0 +1,549 @@
+[
+  {
+    "id": "p5_b1",
+    "page_id": "p5",
+    "type": "table",
+    "line_ids": [
+      "p5_l2",
+      "p5_l1",
+      "p5_l4",
+      "p5_l3",
+      "p5_l5",
+      "p5_l6",
+      "p5_l35",
+      "p5_l24",
+      "p5_l7",
+      "p5_l10",
+      "p5_l13",
+      "p5_l14",
+      "p5_l19",
+      "p5_l26",
+      "p5_l30",
+      "p5_l36",
+      "p5_l43",
+      "p5_l49",
+      "p5_l55",
+      "p5_l56",
+      "p5_l8",
+      "p5_l11",
+      "p5_l15",
+      "p5_l20",
+      "p5_l27",
+      "p5_l31",
+      "p5_l37",
+      "p5_l44",
+      "p5_l50",
+      "p5_l57",
+      "p5_l21",
+      "p5_l38",
+      "p5_l58",
+      "p5_l28",
+      "p5_l29",
+      "p5_l32",
+      "p5_l33",
+      "p5_l40",
+      "p5_l42",
+      "p5_l45",
+      "p5_l47",
+      "p5_l51",
+      "p5_l52",
+      "p5_l59",
+      "p5_l39",
+      "p5_l25",
+      "p5_l34",
+      "p5_l41",
+      "p5_l46",
+      "p5_l48",
+      "p5_l54",
+      "p5_l60",
+      "p5_l23",
+      "p5_l9",
+      "p5_l12",
+      "p5_l16",
+      "p5_l17",
+      "p5_l18",
+      "p5_l53",
+      "p5_l61",
+      "p5_l22",
+      "p5_l62"
+    ],
+    "bbox": [
+      92.51,
+      83.47,
+      505.5,
+      232.72
+    ],
+    "column": 0,
+    "text": "IMT5 OURS TeX based6 Doc2X Google DeepL Readability Free Open-source Deployment Accessibility API integration Price Layout1 Formula2 Bilingual3 OCR4 Batch tasks Efficiency Speed (sec/page) ✓ ✓ ✓ Free ✓ ✓ ✓ ✓7 ✓ 1.47 Paid Partial 1.50 ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ 1.86 Partial Paid ✓ ✓ ✓ ✓ ✓ 1.67 Free ✓ ✓ ✓ ✓ ✓ ✓ 0.38 Paid 1.88",
+    "continues_previous": false,
+    "cells": [
+      {
+        "id": "p5_b1_c0",
+        "row": 0,
+        "col": 0,
+        "rowspan": 2,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p5_l2",
+          "p5_l1",
+          "p5_l4",
+          "p5_l3",
+          "p5_l5",
+          "p5_l6"
+        ],
+        "text": "IMT5 OURS TeX based6 Doc2X Google DeepL"
+      },
+      {
+        "id": "p5_b1_c1",
+        "row": 0,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l35"
+        ],
+        "text": "Readability"
+      },
+      {
+        "id": "p5_b1_c2",
+        "row": 0,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l24"
+        ],
+        "text": "Free"
+      },
+      {
+        "id": "p5_b1_c3",
+        "row": 0,
+        "col": 3,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c4",
+        "row": 0,
+        "col": 4,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c5",
+        "row": 0,
+        "col": 5,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c6",
+        "row": 0,
+        "col": 6,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c7",
+        "row": 1,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l7",
+          "p5_l10",
+          "p5_l13",
+          "p5_l14",
+          "p5_l19",
+          "p5_l26",
+          "p5_l30",
+          "p5_l36",
+          "p5_l43",
+          "p5_l49",
+          "p5_l55",
+          "p5_l56"
+        ],
+        "text": "Open-source Deployment Accessibility API integration Price Layout1 Formula2 Bilingual3 OCR4 Batch tasks Efficiency Speed (sec/page)"
+      },
+      {
+        "id": "p5_b1_c8",
+        "row": 1,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l8",
+          "p5_l11",
+          "p5_l15",
+          "p5_l20",
+          "p5_l27",
+          "p5_l31",
+          "p5_l37",
+          "p5_l44",
+          "p5_l50",
+          "p5_l57",
+          "p5_l21",
+          "p5_l38",
+          "p5_l58"
+        ],
+        "text": "✓ ✓ ✓ Free ✓ ✓ ✓ ✓7 ✓ 1.47 Paid Partial 1.50"
+      },
+      {
+        "id": "p5_b1_c9",
+        "row": 1,
+        "col": 3,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c10",
+        "row": 1,
+        "col": 4,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l28",
+          "p5_l29",
+          "p5_l32",
+          "p5_l33",
+          "p5_l40",
+          "p5_l42",
+          "p5_l45",
+          "p5_l47",
+          "p5_l51",
+          "p5_l52",
+          "p5_l59",
+          "p5_l39",
+          "p5_l25"
+        ],
+        "text": "✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ 1.86 Partial Paid"
+      },
+      {
+        "id": "p5_b1_c11",
+        "row": 1,
+        "col": 5,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l34",
+          "p5_l41",
+          "p5_l46",
+          "p5_l48",
+          "p5_l54",
+          "p5_l60",
+          "p5_l23"
+        ],
+        "text": "✓ ✓ ✓ ✓ ✓ 1.67 Free"
+      },
+      {
+        "id": "p5_b1_c12",
+        "row": 1,
+        "col": 6,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p5_l9",
+          "p5_l12",
+          "p5_l16",
+          "p5_l17",
+          "p5_l18",
+          "p5_l53",
+          "p5_l61",
+          "p5_l22",
+          "p5_l62"
+        ],
+        "text": "✓ ✓ ✓ ✓ ✓ ✓ 0.38 Paid 1.88"
+      },
+      {
+        "id": "p5_b1_c13",
+        "row": 2,
+        "col": 0,
+        "rowspan": 6,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c14",
+        "row": 3,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c15",
+        "row": 4,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c16",
+        "row": 5,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c17",
+        "row": 6,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      },
+      {
+        "id": "p5_b1_c18",
+        "row": 7,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [],
+        "text": ""
+      }
+    ]
+  },
+  {
+    "id": "p7_b8",
+    "page_id": "p7",
+    "type": "table",
+    "line_ids": [
+      "p7_l22",
+      "p7_l23",
+      "p7_l24",
+      "p7_l25",
+      "p7_l28",
+      "p7_l26",
+      "p7_l27",
+      "p7_l29",
+      "p7_l30",
+      "p7_l31",
+      "p7_l34",
+      "p7_l32",
+      "p7_l35",
+      "p7_l37",
+      "p7_l33",
+      "p7_l36",
+      "p7_l38",
+      "p7_l39",
+      "p7_l40",
+      "p7_l41",
+      "p7_l42",
+      "p7_l43",
+      "p7_l44",
+      "p7_l45",
+      "p7_l46",
+      "p7_l47",
+      "p7_l48",
+      "p7_l49",
+      "p7_l50",
+      "p7_l51",
+      "p7_l52",
+      "p7_l53",
+      "p7_l54",
+      "p7_l55"
+    ],
+    "bbox": [
+      76.84,
+      386.32,
+      475.84,
+      719.08
+    ],
+    "column": 0,
+    "text": "Category Details Total Service or models Google (default), 302.AI, Bing, DeepL, DeepLX, Ollama, Ali Qwen, 23 Ollama, Xinference, Gemma, OpenAI, OpenAI-like , DeepSeek, AzureOpenAI, Zhipu, ModelScope, Silicon Cloud, Gemini, Azure, Tencent, Dify, AnythingLLM, Argos Translate, Grok, Groq 194 Input and output languages Abkhaz, Acehnese, Acholi, Afrikaans, Albanian, Alur, Amharic, Arabic, Armenian, Assamese, Awadhi, Aymara, Azerbaijani, Balinese, Bambara, Bashkir, Basque, Batak Karo, Batak Simalungun, Batak Toba, Belarusian, Bemba, Bengali, Betawi, Bhojpuri, Bikol, Bosnian, Breton, Bulgarian, Buryat, Cantonese, Catalan, Cebuano, Chichewa (Nyanja), Chinese (Simplified), Chinese (Traditional), Chuvash, Corsican, Crimean Tatar, Croatian, Czech, Danish, Dinka, Divehi, Dogri, Dombe, Dutch, Dzongkha, English, Esperanto, Estonian, Ewe, Fijian, Filipino (Tagalog), Finnish, French, French (French), French (Canadian), Frisian, Fulfulde, Ga, Galician, Ganda (Luganda), Georgian, German, Greek, Guarani, Gujarati, Haitian Creole, Hakha Chin, Hausa, Hawaiian, Hebrew, Hiligaynon, Hindi, Hmong, Hungarian, Hunsrik, Icelandic, Igbo, Iloko, Indonesian, Irish, Italian, Japanese, Javanese, Kannada, Kapampangan, Kazakh, Khmer, Kiga, Kinyarwanda, Kituba, Konkani, Korean, Krio, Kurdish (Kurmanji), Kurdish (Sorani), Kyrgyz, Lao, Latgalian, Latin, etc. 1",
+    "continues_previous": false,
+    "cells": [
+      {
+        "id": "p7_b8_c0",
+        "row": 0,
+        "col": 0,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p7_l22"
+        ],
+        "text": "Category"
+      },
+      {
+        "id": "p7_b8_c1",
+        "row": 0,
+        "col": 1,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p7_l23"
+        ],
+        "text": "Details"
+      },
+      {
+        "id": "p7_b8_c2",
+        "row": 0,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": true,
+        "line_ids": [
+          "p7_l24"
+        ],
+        "text": "Total"
+      },
+      {
+        "id": "p7_b8_c3",
+        "row": 1,
+        "col": 0,
+        "rowspan": 2,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l25",
+          "p7_l28"
+        ],
+        "text": "Service or models"
+      },
+      {
+        "id": "p7_b8_c4",
+        "row": 1,
+        "col": 1,
+        "rowspan": 2,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l26"
+        ],
+        "text": "Google (default), 302.AI, Bing, DeepL, DeepLX, Ollama, Ali Qwen,"
+      },
+      {
+        "id": "p7_b8_c5",
+        "row": 1,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l27"
+        ],
+        "text": "23"
+      },
+      {
+        "id": "p7_b8_c6",
+        "row": 2,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l29",
+          "p7_l30",
+          "p7_l31"
+        ],
+        "text": "Ollama, Xinference, Gemma, OpenAI, OpenAI-like , DeepSeek, AzureOpenAI, Zhipu, ModelScope, Silicon Cloud, Gemini, Azure, Tencent, Dify, AnythingLLM, Argos Translate, Grok, Groq"
+      },
+      {
+        "id": "p7_b8_c7",
+        "row": 2,
+        "col": 3,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l34"
+        ],
+        "text": "194"
+      },
+      {
+        "id": "p7_b8_c8",
+        "row": 3,
+        "col": 0,
+        "rowspan": 2,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l32",
+          "p7_l35",
+          "p7_l37"
+        ],
+        "text": "Input and output languages"
+      },
+      {
+        "id": "p7_b8_c9",
+        "row": 3,
+        "col": 1,
+        "rowspan": 2,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l33",
+          "p7_l36",
+          "p7_l38",
+          "p7_l39",
+          "p7_l40",
+          "p7_l41",
+          "p7_l42",
+          "p7_l43",
+          "p7_l44",
+          "p7_l45",
+          "p7_l46",
+          "p7_l47",
+          "p7_l48",
+          "p7_l49",
+          "p7_l50",
+          "p7_l51",
+          "p7_l52",
+          "p7_l53",
+          "p7_l54"
+        ],
+        "text": "Abkhaz, Acehnese, Acholi, Afrikaans, Albanian, Alur, Amharic, Arabic, Armenian, Assamese, Awadhi, Aymara, Azerbaijani, Balinese, Bambara, Bashkir, Basque, Batak Karo, Batak Simalungun, Batak Toba, Belarusian, Bemba, Bengali, Betawi, Bhojpuri, Bikol, Bosnian, Breton, Bulgarian, Buryat, Cantonese, Catalan, Cebuano, Chichewa (Nyanja), Chinese (Simplified), Chinese (Traditional), Chuvash, Corsican, Crimean Tatar, Croatian, Czech, Danish, Dinka, Divehi, Dogri, Dombe, Dutch, Dzongkha, English, Esperanto, Estonian, Ewe, Fijian, Filipino (Tagalog), Finnish, French, French (French), French (Canadian), Frisian, Fulfulde, Ga, Galician, Ganda (Luganda), Georgian, German, Greek, Guarani, Gujarati, Haitian Creole, Hakha Chin, Hausa, Hawaiian, Hebrew, Hiligaynon, Hindi, Hmong, Hungarian, Hunsrik, Icelandic, Igbo, Iloko, Indonesian, Irish, Italian, Japanese, Javanese, Kannada, Kapampangan, Kazakh, Khmer, Kiga, Kinyarwanda, Kituba, Konkani, Korean, Krio, Kurdish (Kurmanji), Kurdish (Sorani), Kyrgyz, Lao, Latgalian, Latin, etc."
+      },
+      {
+        "id": "p7_b8_c10",
+        "row": 3,
+        "col": 2,
+        "rowspan": 1,
+        "colspan": 1,
+        "header": false,
+        "line_ids": [
+          "p7_l55"
+        ],
+        "text": "1"
+      }
+    ]
+  }
+]

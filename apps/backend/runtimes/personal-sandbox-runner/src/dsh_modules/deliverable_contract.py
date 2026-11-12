@@ -6,7 +6,7 @@ import sys
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union, Any
 
 from .action_protocol import is_internal_plan_output
 from .telemetry import format_dsh_marker
@@ -154,6 +154,14 @@ def is_substantive_final_content(text: str) -> bool:
         "执行超时",
         "无法完成",
         "建议重新发送",
+        "无法生成",
+        "无法直接生成",
+        "作为一个人工智能助手",
+        "作为一个AI",
+        "作为一个语言模型",
+        "我无法直接生成",
+        "我不能直接生成",
+        "未能成功生成",
     )
     return not any(marker in cleaned for marker in failure_markers)
 
@@ -178,6 +186,72 @@ def write_markdown_artifact(workspace_dir: str, file_path: str, content: str) ->
         ensure_ascii=False,
     )
     return format_dsh_marker("OUTBOUND_FILE", payload)
+
+
+def write_json_artifact(
+    workspace_dir: str,
+    file_path: str,
+    content: Any,
+    indent: int = 2
+) -> str:
+    """Writes a JSON artifact inside the workspace with syntax validation and returns an outbound-file marker."""
+    clean_name = Path(str(file_path or "data.json")).name
+    if not clean_name.lower().endswith(".json"):
+        clean_name = f"{clean_name}.json"
+    if not re.fullmatch(r"[a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.json", clean_name, re.I):
+        raise ValueError("invalid JSON file name")
+
+    parsed_data = None
+    if isinstance(content, (dict, list)):
+        parsed_data = content
+    elif isinstance(content, str):
+        raw_text = content.strip()
+        # 剥离可能由 LLM 附带的外层 ```json 或 ``` 格式栅栏
+        m_fence = re.fullmatch(r"```(?:json)?\s*\n([\s\S]*?)\n```\s*", raw_text, re.I)
+        if m_fence:
+            raw_text = m_fence.group(1).strip()
+        elif raw_text.startswith("```json") and raw_text.endswith("```"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```") and raw_text.endswith("```"):
+            raw_text = raw_text[3:-3].strip()
+
+        if not raw_text:
+            raise ValueError("JSON content must not be empty")
+        try:
+            parsed_data = json.loads(raw_text)
+        except json.JSONDecodeError as err:
+            line_no = err.lineno
+            col_no = err.colno
+            lines = raw_text.splitlines()
+            snippet = lines[line_no - 1] if 0 <= line_no - 1 < len(lines) else ""
+            indicator = " " * (col_no - 1) + "^" if col_no > 0 else "^"
+            err_msg = (
+                f"JSON 格式语法校验失败: 第 {line_no} 行第 {col_no} 列处解析出错 ({err.msg})。\n"
+                f"出错行上下文:\n  {snippet}\n  {indicator}\n"
+                f"请检查是否包含未转义的双引号、多余的末尾逗号(trailing comma)或未闭合的括号。"
+            )
+            raise ValueError(err_msg) from err
+    elif content is None:
+        raise ValueError("JSON content must not be empty")
+    else:
+        raise ValueError(f"Unsupported content type for JSON: {type(content).__name__}")
+
+    serialized = json.dumps(parsed_data, ensure_ascii=False, indent=indent)
+
+    workspace = Path(workspace_dir)
+    workspace.mkdir(parents=True, exist_ok=True)
+    target = workspace / clean_name
+    target.write_text(serialized.rstrip() + "\n", encoding="utf-8")
+
+    item_count = len(parsed_data) if isinstance(parsed_data, (dict, list)) else 1
+    file_size = target.stat().st_size
+    payload = json.dumps(
+        {"filePath": str(target), "fileName": target.name},
+        ensure_ascii=False,
+    )
+    marker = format_dsh_marker("OUTBOUND_FILE", payload)
+    return f"{marker}\n✅ JSON 文件已成功校验并落盘: {clean_name} (有效结构包含 {item_count} 项元素, 文件大小: {file_size} 字节)"
+
 
 
 def materialize_requested_markdown(
@@ -285,28 +359,76 @@ def is_code_or_script_content(text: str) -> bool:
 def resolve_pdf_filename(prompt: str, fallback_stem: str = "result") -> str:
     """Resolves an explicit safe PDF filename from the prompt or derives a stable default."""
     if prompt:
+        clean_prompt = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单|当前上下文聚焦文档)】:[^\n]+', '', prompt).strip()
+
         m_explicit = re.search(
             r'(?:文件名|名为|命名为|保存为|输出为|生成为)\s*[:：=]?\s*[\'"`]?([a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.pdf)[\'"`]?',
-            prompt, re.I
+            clean_prompt, re.I
         )
         if m_explicit:
             cand = Path(m_explicit.group(1)).name
             if cand.lower().endswith(".pdf") and cand != ".pdf":
                 return cand
 
-        m_pdf = re.search(r'[\'"`]?([a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.pdf)[\'"`]?', prompt, re.I)
+        # 检测翻译/本地化/转成语言版本的意图
+        is_trans_or_convert = bool(re.search(r'(?:翻译|本地化|转为|转换|生成)', clean_prompt))
+        is_zh = bool(re.search(r'(?:中文|汉化|中译)', clean_prompt))
+        is_ja = bool(re.search(r'(?:日文|日语|日译)', clean_prompt))
+        is_en = bool(re.search(r'(?:英文|英语|英译)', clean_prompt))
+
+        m_pdf = re.search(r'[\'"`]?([a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.pdf)[\'"`]?', clean_prompt, re.I)
         if m_pdf:
             cand = Path(m_pdf.group(1)).name
             if cand.lower().endswith(".pdf") and cand != ".pdf" and not cand.lower().startswith("result"):
+                cand_stem = cand[:-4]
+                if is_trans_or_convert:
+                    if is_zh and not cand_stem.endswith(("_中文版", "_zh", "_cn", "_中文")):
+                        return f"{cand_stem}_中文版.pdf"
+                    if is_ja and not cand_stem.endswith(("_日文版", "_ja", "_jp", "_日语版")):
+                        return f"{cand_stem}_日文版.pdf"
+                    if is_en and not cand_stem.endswith(("_英文版", "_en", "_us", "_英语版")):
+                        return f"{cand_stem}_英文版.pdf"
                 return cand
 
-        m_title = re.search(r'《([^》\r\n]{2,30})》', prompt)
+        m_title = re.search(r'《([^》\r\n]{2,30})》', clean_prompt)
         if m_title:
             cand_stem = re.sub(r'[\\/*?:"<>|]', '_', m_title.group(1).strip())
             if cand_stem:
+                if is_trans_or_convert:
+                    if is_zh and not cand_stem.endswith(("_中文版", "_zh", "_cn", "_中文")):
+                        return f"{cand_stem}_中文版.pdf"
+                    if is_ja and not cand_stem.endswith(("_日文版", "_ja", "_jp", "_日语版")):
+                        return f"{cand_stem}_日文版.pdf"
+                    if is_en and not cand_stem.endswith(("_英文版", "_en", "_us", "_英语版")):
+                        return f"{cand_stem}_英文版.pdf"
                 return f"{cand_stem}.pdf"
 
+        # 若在附件信封中存在原文件名，翻译任务优先以原文件名为基底添加语言后缀
+        if is_trans_or_convert:
+            m_att = re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单|当前上下文聚焦文档)】:\s*([^\s（\n]+\.pdf)', prompt)
+            if m_att:
+                att_stem = Path(m_att.group(1)).stem
+                if is_zh and not att_stem.endswith(("_中文版", "_zh", "_cn", "_中文")):
+                    return f"{att_stem}_中文版.pdf"
+                if is_ja and not att_stem.endswith(("_日文版", "_ja", "_jp", "_日语版")):
+                    return f"{att_stem}_日文版.pdf"
+                if is_en and not att_stem.endswith(("_英文版", "_en", "_us", "_英语版")):
+                    return f"{att_stem}_英文版.pdf"
+                return f"{att_stem}.pdf"
+
     clean_fallback = Path(fallback_stem).stem if fallback_stem else "result"
+    if prompt:
+        is_trans_or_convert = bool(re.search(r'(?:翻译|本地化|转为|转换|生成)', prompt))
+        is_zh = bool(re.search(r'(?:中文|汉化|中译)', prompt))
+        is_ja = bool(re.search(r'(?:日文|日语|日译)', prompt))
+        is_en = bool(re.search(r'(?:英文|英语|英译)', prompt))
+        if is_trans_or_convert and clean_fallback not in ("result", "report", "document"):
+            if is_zh and not clean_fallback.endswith(("_中文版", "_zh", "_cn", "_中文")):
+                return f"{clean_fallback}_中文版.pdf"
+            if is_ja and not clean_fallback.endswith(("_日文版", "_ja", "_jp", "_日语版")):
+                return f"{clean_fallback}_日文版.pdf"
+            if is_en and not clean_fallback.endswith(("_英文版", "_en", "_us", "_英语版")):
+                return f"{clean_fallback}_英文版.pdf"
     return f"{clean_fallback}.pdf"
 
 
@@ -338,6 +460,8 @@ def resolve_pdf_theme(prompt: str) -> str:
 
 def resolve_pdf_page_bounds(prompt: str) -> Tuple[Optional[int], Optional[int]]:
     """Resolves min_pages and max_pages from prompt if specified."""
+    from .pdf_output_contract import pdf_page_requirement_text
+    prompt = pdf_page_requirement_text(prompt)
     if not prompt:
         return None, None
     m_range = re.search(r'(\d+)\s*(?:到|-|至)\s*(\d+)\s*页', prompt)
@@ -377,13 +501,17 @@ def materialize_pdf_from_markdown(
     or freshly created Markdown file (or substantive text in final_text) into a PDF
     using the built-in generate_report_pdf.py script.
     """
-    has_pdf_intent = (
-        (expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables))
-        or bool(re.search(r"(?:生成|导出|制作|转为|转成|做成)[^，。\n]{0,8}pdf", prompt or "", re.I))
-        or "pdf" in (prompt or "").lower()
-    )
-    if not has_pdf_intent:
+    from .pdf_translation_bridge import has_pdf_translation, is_pdf_translation_request
+    if has_pdf_translation():
+        return None  # Never compile a translation status/error message as the requested document.
+    if is_pdf_translation_request(prompt):
+        # A plan/reply rendered as PDF would mask the missing engine run and stop the
+        # deliverable nudge; the translation gate would then reject it anyway.
         return None
+    from .pdf_output_contract import requests_pdf_output, pdf_user_instruction
+    if not requests_pdf_output(prompt, expected_deliverables):
+        return None
+    prompt = pdf_user_instruction(prompt)
 
     workspace = Path(workspace_dir)
     if not workspace.exists():
@@ -394,13 +522,19 @@ def materialize_pdf_from_markdown(
     target_pdf_name = resolve_pdf_filename(prompt)
     preferred_pdf = workspace / target_pdf_name
 
-    # 1. 检查当前轮次是否已经生成了有效的目标 PDF 文件
-    if preferred_pdf.is_file() and preferred_pdf.stat().st_size > 50 and preferred_pdf.stat().st_mtime >= cutoff:
+    # 1. 检查当前轮次是否已经生成了有效的目标 PDF 文件（严禁将原始输入附件当作生成交付物）
+    from .file_tools import is_protected_session_file
+    if (
+        preferred_pdf.is_file()
+        and preferred_pdf.stat().st_size > 50
+        and preferred_pdf.stat().st_mtime >= cutoff
+        and not is_protected_session_file(preferred_pdf)
+    ):
         return str(preferred_pdf)
 
     for f in workspace.glob("*.pdf"):
         if f.is_file() and f.stat().st_size > 50 and f.stat().st_mtime >= cutoff:
-            if ".pdf-preview" not in str(f):
+            if ".pdf-preview" not in str(f) and not is_protected_session_file(f):
                 return str(f)
 
     # 2. 寻找生成报告使用的 generate_report_pdf.py 脚本
@@ -667,4 +801,3 @@ def materialize_config_or_code_deliverable(
                 pass
 
     return list(dict.fromkeys(materialized))
-

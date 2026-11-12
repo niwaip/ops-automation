@@ -14,6 +14,7 @@ import {
 import { UserSandboxStorageService, UserWorkspacePaths, UserSandboxQuota } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
 import { UserSandboxHarnessService } from './user-sandbox-harness.service';
+import { LockService } from '../lock/lock.service';
 
 @Injectable()
 export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
@@ -27,7 +28,8 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Optional() storageService?: UserSandboxStorageService,
     @Optional() containerService?: UserSandboxContainerService,
-    @Optional() harnessService?: UserSandboxHarnessService
+    @Optional() harnessService?: UserSandboxHarnessService,
+    @Optional() private readonly lockService?: LockService
   ) {
     this.storageService = storageService || new UserSandboxStorageService();
     this.containerService =
@@ -132,6 +134,26 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
         }
 
         if (now - lastActive >= idleTimeoutMs) {
+          // 1. 若当前用户正在执行 Harness/前台任务，跳过冻结并刷新活跃时间
+          if (this.harnessService.isUserExecuting?.(sb.userId)) {
+            this.lastActiveMap.set(sanitizedId, now);
+            continue;
+          }
+
+          // 2. 尝试以非阻塞模式获取用户执行锁，避免与刚发起的新请求发生竞态
+          let lockToken: string | null = null;
+          if (this.lockService) {
+            const lockResult = await this.lockService.acquireSandboxLock(sanitizedId, 60, 0);
+            if (!lockResult.success) {
+              this.logger.log(
+                `User sandbox [${sb.userId}] has pending or active execution. Postponing auto-freeze.`
+              );
+              this.lastActiveMap.set(sanitizedId, now);
+              continue;
+            }
+            lockToken = lockResult.token;
+          }
+
           const idleMins = Math.round((now - lastActive) / 60000);
           this.logger.log(
             `User sandbox [${sb.userId}] has been idle for ${idleMins}m (>= ${this.idleTimeoutMinutes}m). Auto-freezing container to release system resources...`
@@ -141,6 +163,10 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
             this.lastActiveMap.delete(sanitizedId);
           } catch (err: any) {
             this.logger.warn(`Failed to auto-freeze idle sandbox [${sb.userId}]: ${err.message}`);
+          } finally {
+            if (this.lockService && lockToken) {
+              await this.lockService.releaseSandboxLock(sanitizedId, lockToken).catch(() => {});
+            }
           }
         }
       }

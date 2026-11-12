@@ -363,8 +363,7 @@ def resolve_sandboxed_path(
 from .personal_knowledge_search import (
     get_last_scanned_knowledge_files,
     scan_personal_knowledge,
-    _extract_knowledge_query_keywords,
-    _get_file_type_tier_and_score,
+    read_personal_knowledge,
 )
 
 
@@ -529,6 +528,10 @@ def inspect_image(
     pdf_page_meta = ""
 
     if suffix == ".pdf":
+        from .visual_reading_policy import pdf_visual_allowed
+        if not pdf_visual_allowed(p, os.environ.get('DSH_USER_REQUEST', '')):
+            return (f"【PDF 文本优先】{p.name} 未启用视觉读取；请使用 read_file 按行分段读取原生文本。"
+                    "当前调用未发送图片或调用视觉模型。")
         try:
             import io
             from PIL import Image
@@ -587,7 +590,8 @@ def inspect_image(
 
             # 限制单次拼接最多 4 页，避免超长条带拉伸导致的 ViT 超时与文字模糊
             if len(target_pages) > 4:
-                target_pages = target_pages[:4]
+                return ("【PDF 分页范围超限】单次视觉读取最多4页，本次未读取请求范围。"
+                        "请拆成每批不超过4页的调用，并按实际返回页码连续读取。")
 
             # 3. 光栅化渲染指定页
             rendered_images = []
@@ -707,74 +711,41 @@ def inspect_image(
     if telemetry:
         telemetry.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose, 'model': model_name or 'default'})
     try:
-        b64_str = base64.b64encode(image_bytes).decode("ascii")
-
+        from .model_image_transport import request_image_completion
         analysis_prompt = prompt.strip() if prompt and prompt.strip() else (
-            "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。"
-        )
-
-        api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
+            "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。")
+        if pdf_page_meta:
+            analysis_prompt = pdf_page_meta + '\n只分析本次实际提供的页面，不推测其他页面。\n' + analysis_prompt
         from .runtime_policy import RuntimePolicy
-        pol = RuntimePolicy.from_env()
         target_model = model_name or os.environ.get("DSH_MODEL") or "default"
-        payload = {
-            "model": target_model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": analysis_prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime};base64,{b64_str}",
-                                "detail": "auto"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "temperature": 0.2,
-            "max_tokens": max_tokens if max_tokens is not None else pol.max_tokens,
-            "thinking": False,
-            "stream": False
-        }
-
-        req = urllib.request.Request(
-            api_endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {VIRTUAL_API_KEY}"
-            }
-        )
-
-        with urllib.request.urlopen(req, timeout=to_vision) as response:
-            resp_data = json.loads(response.read().decode("utf-8"))
-            response_model = resp_data.get('model') or target_model
-            assert_not_timed_out(deadline, "image vision inspection")
-            usage = resp_data.get('usage') or {}
-            choices = resp_data.get("choices", [])
-            if purpose == 'pdf_page_review' and choices and choices[0].get('finish_reason') not in ('stop', None):
-                return ('页面检查响应不完整：model=' + str(resp_data.get('model', target_model))
-                        + ', finish_reason=' + str(choices[0].get('finish_reason')) + '；停止正文重写。')
-            if choices:
-                content = choices[0].get("message", {}).get("content", "")
-                if content and content.strip():
-                    if suffix != ".pdf":
-                        for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-                            tp = p.parent / txt_name
-                            if not tp.exists():
-                                try:
-                                    tp.write_text(content, encoding="utf-8")
-                                except Exception:
-                                    pass
-                    meta_prefix = f"{pdf_page_meta}\n" if pdf_page_meta else ""
-                    return f"{meta_prefix}【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
-            if purpose == 'pdf_page_review':
-                return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
-                        + '；这不是页面内容缺陷，停止正文重写。')
-            return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
+        resp_data = request_image_completion(image_bytes, mime, analysis_prompt, target_model,
+            max_tokens=max_tokens if max_tokens is not None else RuntimePolicy.from_env().max_tokens,
+            timeout=to_vision, api_endpoint=f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions",
+            api_key=VIRTUAL_API_KEY)
+        response_model = resp_data.get('model') or target_model
+        assert_not_timed_out(deadline, "image vision inspection")
+        usage = resp_data.get('usage') or {}
+        choices = resp_data.get("choices", [])
+        if purpose == 'pdf_page_review' and choices and choices[0].get('finish_reason') not in ('stop', None):
+            return ('页面检查响应不完整：model=' + str(resp_data.get('model', target_model))
+                    + ', finish_reason=' + str(choices[0].get('finish_reason')) + '；停止正文重写。')
+        if choices:
+            content = choices[0].get("message", {}).get("content", "")
+            if content and content.strip():
+                if suffix != ".pdf":
+                    for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
+                        tp = p.parent / txt_name
+                        if not tp.exists():
+                            try:
+                                tp.write_text(content, encoding="utf-8")
+                            except Exception:
+                                pass
+                meta_prefix = f"{pdf_page_meta}\n" if pdf_page_meta else ""
+                return f"{meta_prefix}【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+        if purpose == 'pdf_page_review':
+            return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
+                    + '；这不是页面内容缺陷，停止正文重写。')
+        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
     except TimeoutError:
         raise
     except urllib.error.HTTPError as he:
@@ -817,9 +788,14 @@ def read_workspace_file(
     model_name: Optional[str] = None,
     prompt: Optional[str] = None,
     sheet_name: Optional[str] = None,
-    cell_range: Optional[str] = None
+    cell_range: Optional[str] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
+    bbox=None,
 ) -> str:
     """Reads and extracts text locally from workspace or knowledge files (.docx, .xlsx, .txt, .md, .json, .py, .pdf) without calling any LLM."""
+    if str(file_path).startswith('personal-knowledge://'):
+        return read_personal_knowledge(file_path, max_chars, start_line, end_line, deadline)
     p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
     if err:
         return err
@@ -829,6 +805,8 @@ def read_workspace_file(
         return f"读取失败：目标不是普通文件: {file_path}"
 
     suffix = p.suffix.lower()
+    if suffix != '.pdf' and any(v is not None for v in (start_page, end_page, bbox)):
+        return '【读取参数错误】start_page/end_page/bbox 仅适用于 PDF'
 
     # 全局前置检测：若文件被 Microsoft Information Protection (MIP/RMS) 企业安全加密封装
     try:
@@ -865,7 +843,8 @@ def read_workspace_file(
 
     # 3. PDF 文档 (.pdf) 原生本地文本提取（不在此处隐式调用视觉大模型）
     elif suffix == ".pdf":
-        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line,
+                                start_page=start_page, end_page=end_page, bbox=bbox, deadline=deadline)
 
     # 4. PPT 文档 (.pptx) 原生提取
     elif suffix == ".pptx":
@@ -988,6 +967,10 @@ def send_workspace_file(file_path: str, comment: str = "") -> str:
         return f"发送失败：目标路径 ({p.name}) 不是普通文件（不支持直接外发目录、FIFO管道或特殊设备文件）。"
     if not os.access(p, os.R_OK):
         return f"发送失败：文件不可读，缺少读取权限 ({p.name})"
+    if p.suffix.lower() == '.pdf':
+        from .pdf_translation_bridge import has_pdf_translation
+        if has_pdf_translation():
+            return '发送失败：本轮翻译须先完成运行时PDF发布验收，请勿发送隐藏候选或旧版本。'
 
     try:
         size = p.stat().st_size

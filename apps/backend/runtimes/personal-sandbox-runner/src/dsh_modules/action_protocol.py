@@ -17,6 +17,7 @@ RECOVERABLE_TEXT_TOOLS = {
     "scan_knowledge",
     "read_skill",
     "write_markdown",
+    "write_json",
     "create_reminders",
 }
 
@@ -27,6 +28,7 @@ POSITIONAL_ARGUMENT_NAMES = {
     "read_file": "file_path",
     "read_workspace_file": "file_path",
     "read_skill": "skill_name",
+    "write_json": "file_path",
 }
 
 PLAN_HEADER_RE = re.compile(
@@ -275,7 +277,7 @@ def recover_text_tool_calls(
     # of using the native tool_calls field.
     standalone = _parse_function_call_expression((text or "").strip())
     if standalone and standalone["name"] in (
-        "write_markdown", "create_reminders", "weather", "web_search",
+        "write_markdown", "write_json", "create_reminders", "weather", "web_search",
         "fetch_page", "read_file", "read_skill", "scan_knowledge"
     ):
         if standalone["name"] != "create_reminders" or has_reminder_intent:
@@ -309,7 +311,7 @@ def recover_text_tool_calls(
                         clean_name = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', raw_name).lower()
                         if clean_name == "search_web":
                             clean_name = "web_search"
-                        if clean_name in ("web_search", "weather", "fetch_page", "read_file", "read_skill", "scan_knowledge", "write_markdown", "create_reminders"):
+                        if clean_name in ("web_search", "weather", "fetch_page", "read_file", "read_skill", "scan_knowledge", "write_markdown", "write_json", "create_reminders"):
                             if clean_name == "create_reminders" and not has_reminder_intent:
                                 continue
                             if "arguments" in item and isinstance(item["arguments"], dict):

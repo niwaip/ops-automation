@@ -14,6 +14,8 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import axios from 'axios';
 import { ModelService } from './model.service';
+import { SandboxFallbackPolicy, isPermanentFallbackError } from './sandbox-fallback.policy';
+import { guardedSandboxStream, SandboxStreamGuardError } from './sandbox-stream-guard';
 import { bindProxyCancellation } from './model-proxy-cancellation';
 import { sandboxCompletion } from './sandbox-completion-response';
 import { parseAndVerifySandboxToken } from '../../common/guards/ai-auth.guard';
@@ -29,11 +31,14 @@ const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 30_000;
 const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 90_000;
 const DOCUMENT_GENERATION_ATTEMPT_TIMEOUT_MS = 120_000;
 const LARGE_TOOL_SURFACE_THRESHOLD = 8;
+const MAX_FALLBACK_CANDIDATES = 10;
+const MAX_TRANSIENT_FALLBACK_ATTEMPTS = 2;
 
 @ApiTags('AI-Proxy')
 @Controller('ai/proxy/v1')
 export class ModelProxyController {
   private readonly logger = new Logger(ModelProxyController.name);
+  private readonly fallbackPolicy = new SandboxFallbackPolicy();
 
   constructor(private readonly modelService: ModelService) {}
 
@@ -242,11 +247,8 @@ export class ModelProxyController {
           };
 
           // Internal tool-selection output is buffered and therefore safe to replay.
-          // Give it up to 2 same-model retries when buffered internally to withstand transient network drops.
-          const maxStreamRetries = Math.max(
-            this.resolveMaxRetries(),
-            bufferInternalStream ? 2 : 1
-          );
+          // Respect the configured retry bound for both visible and buffered streams.
+          const maxStreamRetries = this.resolveMaxRetries();
           let primaryStreamErr: any;
           for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {
             cancellation.signal.throwIfAborted();
@@ -255,7 +257,7 @@ export class ModelProxyController {
               break;
             }
             try {
-              await client.chatCompletionStream(
+              await guardedSandboxStream(client,
                 {
                   messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
                   temperature: body.temperature,
@@ -268,11 +270,13 @@ export class ModelProxyController {
                   signal: cancellation.signal,
                 },
                 (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta),
-                resolvedReasoning
+                resolvedReasoning,
+                { buffered: bufferInternalStream, mcpSelection: body.request_context === 'mcp_tool_selection' }
               );
               streamSuccess = true;
               break;
             } catch (err: any) {
+              if (err instanceof SandboxStreamGuardError) throw err;
               if (cancellation.signal.aborted) throw err;
               primaryStreamErr = err;
               const errMsg = String(err?.message || err);
@@ -330,35 +334,42 @@ export class ModelProxyController {
             this.logger.warn(
               `Default model stream failed (${finalStreamErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
-            for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
-              cancellation.signal.throwIfAborted();
-              if (chunksSent > 0 && !bufferInternalStream) {
-                // 已有数据写入客户端时，不能中途切换模型拼接输出
-                break;
-              }
-              try {
+            streamSuccess = await this.tryFallbackCandidates(
+              isVisionRequested,
+              client,
+              cancellation.signal,
+              'Fallback client stream',
+              async (fbKey, fbClient) => {
                 if (bufferInternalStream) {
                   bufferedSseFrames = [];
                   chunksSent = 0;
                   visibleOutputChunksSent = 0;
                 }
                 this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
-                await fbClient.chatCompletionStream(
-                  { messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
-                    temperature: body.temperature, max_tokens: body.max_tokens,
-                    reasoning: resolvedReasoning, tools: body.tools, tool_choice: body.tool_choice,
-                    signal: cancellation.signal, timeoutMs: this.resolveAttemptTimeoutMs(body),
-                    streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body) },
-                  (chunk: string) => writeChunk(chunk, fbKey),
-                  resolvedReasoning
+                await guardedSandboxStream(
+                  fbClient,
+                  {
+                    messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                    temperature: body.temperature,
+                    max_tokens: body.max_tokens,
+                    reasoning: resolvedReasoning,
+                    tools: body.tools,
+                    tool_choice: body.tool_choice,
+                    signal: cancellation.signal,
+                    timeoutMs: this.resolveAttemptTimeoutMs(body),
+                    streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body),
+                  },
+                  (chunk: string, meta?: any) => writeChunk(chunk, fbKey, meta),
+                  resolvedReasoning,
+                  { buffered: bufferInternalStream, mcpSelection: body.request_context === 'mcp_tool_selection' }
                 );
-                streamSuccess = true;
-                break;
-              } catch (fbErr: any) {
-                this.logger.warn(`Fallback client stream [${fbKey}] also failed: ${fbErr.message}`);
+              },
+              {
+                // 已有数据写入客户端时，不能中途切换模型拼接输出
+                shouldStop: () => chunksSent > 0 && !bufferInternalStream,
+                shouldRethrow: (fbErr) => fbErr instanceof SandboxStreamGuardError,
               }
-            }
+            );
             if (!streamSuccess) {
               throw finalStreamErr;
             }
@@ -448,11 +459,12 @@ export class ModelProxyController {
             this.logger.warn(
               `Default model failed (${finalNonStreamErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
-            let fallbackSucceeded = false;
-            for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
-              cancellation.signal.throwIfAborted();
-              try {
+            const fallbackSucceeded = await this.tryFallbackCandidates(
+              isVisionRequested,
+              client,
+              cancellation.signal,
+              'Fallback client',
+              async (fbKey, fbClient) => {
                 this.logger.log(`Trying fallback model client [${fbKey}]...`);
                 const fbRes = await fbClient.chatCompletion({
                   messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
@@ -471,12 +483,8 @@ export class ModelProxyController {
                 responseToolCalls = completion.tools;
                 responseUsage = completion.usage || responseUsage;
                 responseModel = fbKey;
-                fallbackSucceeded = true;
-                break;
-              } catch (fbErr: any) {
-                this.logger.warn(`Fallback client [${fbKey}] also failed: ${fbErr.message}`);
               }
-            }
+            );
             if (!fallbackSucceeded) {
               throw finalNonStreamErr;
             }
@@ -508,6 +516,15 @@ export class ModelProxyController {
           return;
         }
       } catch (err: any) {
+        if (err instanceof SandboxStreamGuardError) {
+          this.logger.warn(`Sandbox stream stopped: ${err.code} ${JSON.stringify(err.details)}`);
+          if (!res.writableEnded && !res.destroyed) {
+            res.write(`data: ${JSON.stringify({ error: { code: err.code, message: err.code, details: err.details } })}\n\n`);
+            res.write('data: [DONE]\n\n');
+            res.end();
+          }
+          return;
+        }
         if (cancellation.signal.aborted) {
           this.logger.log('Sandbox client disconnected; cancelled upstream model request.');
           return;
@@ -782,39 +799,45 @@ export class ModelProxyController {
 
   private getResilientFallbackClients(
     isVisionRequested: boolean,
-    currentClient: any
+    currentClient: any,
+    limit = MAX_FALLBACK_CANDIDATES
   ): Array<{ id: string; client: any }> {
-    const candidates: Array<{ id: string; client: any }> = [];
-    const seen = new Set<string>();
+    return this.fallbackPolicy.select(this.modelService, isVisionRequested, currentClient, limit);
+  }
 
-    if (isVisionRequested) {
-      const visionModel = this.modelService.getPreferredVisionModel();
-      if (visionModel) {
-        const vClient = this.modelService.getClient(visionModel.id);
-        if (vClient && vClient !== currentClient) {
-          candidates.push({ id: visionModel.name || visionModel.id, client: vClient });
-          seen.add(visionModel.id);
+  private async tryFallbackCandidates(
+    isVisionRequested: boolean,
+    currentClient: any,
+    signal: AbortSignal,
+    logLabel: string,
+    attempt: (fbKey: string, fbClient: any) => Promise<void>,
+    options?: { shouldStop?: () => boolean; shouldRethrow?: (err: any) => boolean }
+  ): Promise<boolean> {
+    const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, currentClient);
+    let transientFailures = 0;
+    for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+      signal.throwIfAborted();
+      if (options?.shouldStop?.()) {
+        break;
+      }
+      try {
+        await attempt(fbKey, fbClient);
+        return true;
+      } catch (fbErr: any) {
+        if (options?.shouldRethrow?.(fbErr)) {
+          throw fbErr;
+        }
+        this.fallbackPolicy.failed(fbClient, fbErr);
+        this.logger.warn(`${logLabel} [${fbKey}] also failed: ${fbErr.message}`);
+        if (!isPermanentFallbackError(fbErr)) {
+          transientFailures += 1;
+          if (transientFailures >= MAX_TRANSIENT_FALLBACK_ATTEMPTS) {
+            break;
+          }
         }
       }
     }
-
-    const activeModels = this.modelService.listActiveModelsForRouting();
-    for (const model of activeModels) {
-      if (seen.has(model.id)) continue;
-      if (isVisionRequested && !this.modelService.isVisionCapableModel(model)) continue;
-      const mClient = this.modelService.getClient(model.id);
-      if (mClient && mClient !== currentClient) {
-        candidates.push({ id: model.name || model.id, client: mClient });
-        seen.add(model.id);
-      }
-    }
-
-    const defaultClient = this.modelService.getClient('default');
-    if (!isVisionRequested && defaultClient && defaultClient !== currentClient && !candidates.some((c) => c.client === defaultClient)) {
-      candidates.push({ id: 'default', client: defaultClient });
-    }
-
-    return candidates;
+    return false;
   }
 
   /**
@@ -850,6 +873,13 @@ export class ModelProxyController {
    */
   hasDocumentOrArtifactGeneration(body?: Record<string, any>): boolean {
     if (!body) return false;
+    if (
+      body.request_context === 'document_translation' ||
+      body.request_context === 'spreadsheet_translation' ||
+      body.request_context === 'artifact_generation'
+    ) {
+      return true;
+    }
     const tools = Array.isArray(body.tools) ? body.tools : [];
     const toolChoiceName = String(
       body.tool_choice?.function?.name ||

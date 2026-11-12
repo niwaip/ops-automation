@@ -109,6 +109,7 @@ def format_retrieval_sources_footer(
     """Formats markdown footer section for local files and web citations."""
     deliverable_items = []
     knowledge_items = []
+    personal_items = []
     seen_stems = set()
 
     if local_files:
@@ -134,6 +135,12 @@ def format_retrieval_sources_footer(
                 continue
             seen_stems.add(stem)
 
+            if f.get('source_category') == 'personal_workspace' and f.get('url'):
+                personal_items.append(f"[{fname}]({f['url']})")
+                if len(personal_items) >= MAX_LOCAL_CITATION_COUNT:
+                    break
+                continue
+
             is_deliverable = (
                 f.get("source_category") == "deliverable"
                 or fname.startswith("deliverables/")
@@ -151,7 +158,7 @@ def format_retrieval_sources_footer(
             if len(deliverable_items) + len(knowledge_items) >= MAX_LOCAL_CITATION_COUNT:
                 break
 
-    has_local = bool(deliverable_items or knowledge_items)
+    has_local = bool(deliverable_items or knowledge_items or personal_items)
     has_web = bool(web_sources)
 
     if not has_local and not has_web:
@@ -162,6 +169,11 @@ def format_retrieval_sources_footer(
         "### 📚 资料与引用来源",
         ""
     ]
+
+    if personal_items:
+        lines.append('**个人空间资料：**')
+        lines.extend(f'- {item}' for item in personal_items)
+        lines.append('')
 
     if deliverable_items:
         lines.append("**产出成果库：**")
@@ -192,12 +204,28 @@ def append_retrieval_sources_footer(
     search_context: str = "",
     local_knowledge_files: Optional[List[Dict[str, Any]]] = None,
     is_verbatim: bool = False,
+    used_only: bool = False,
 ) -> str:
     """
     Appends retrieval sources footer to final_text if applicable and not already present.
     """
     if not final_text or not final_text.strip():
         return final_text
+
+    if used_only:
+        from .retrieval_citations import assess_citations
+        from .tool_result import ToolResult
+        personal_links = '\n'.join(f"[{doc.get('name', '')}]({doc.get('url', '')})" for doc in local_knowledge_files or [])
+        final_text, _ = assess_citations(final_text, [
+            ToolResult.success(personal_links, provenance={'tool': 'scan_knowledge'}),
+            ToolResult.success(search_context, provenance={'tool': 'web_search'})])
+        # Canonical tool URIs are internal read handles; render the same node's UI link.
+        for doc in local_knowledge_files or []:
+            if doc.get('path', '').startswith('personal-knowledge://') and doc.get('url'):
+                final_text = final_text.replace(doc['path'], doc['url'])
+        local_knowledge_files = [doc for doc in local_knowledge_files or []
+            if (doc.get('url') and doc['url'] in final_text)
+            or (doc.get('name') and doc['name'] in final_text)]
 
     # 1. 规避纯逐字输出或错误拦截
     if is_verbatim:
@@ -243,6 +271,9 @@ def append_retrieval_sources_footer(
 
     # 5. 提取网络检索来源
     web_sources = extract_search_sources(search_context, max_items=5) if search_context else []
+
+    if used_only:
+        web_sources = [source for source in web_sources if source['url'] in final_text]
 
     footer = format_retrieval_sources_footer(
         local_files=filtered_local,

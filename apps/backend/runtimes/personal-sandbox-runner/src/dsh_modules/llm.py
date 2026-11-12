@@ -11,6 +11,7 @@ import urllib.request
 import urllib.error
 from typing import Any, Optional, List, Dict, Tuple
 from .config import DEFAULT_PROXY_URL, VIRTUAL_API_KEY
+from .model_failures import ModelStreamError, ModelRepetitionLoopError, failure_code
 
 
 TRANSIENT_STREAM_TOKENS = (
@@ -18,15 +19,6 @@ TRANSIENT_STREAM_TOKENS = (
     "socket disconnected", "network", "connection reset", "disconnected",
     "tls", "stream failed", "client network socket disconnected"
 )
-
-
-class ModelRepetitionLoopError(RuntimeError):
-    """Raised when streaming tokens indicate the model has entered an infinite repetition loop."""
-    def __init__(self, message: str, pattern: str = "", repeat_count: int = 0, target: str = "thought"):
-        super().__init__(message)
-        self.pattern = pattern
-        self.repeat_count = repeat_count
-        self.target = target
 
 
 def detect_repetition_loop(
@@ -156,6 +148,11 @@ def _process_sse_data(
     try:
         data_obj = json.loads(data_str)
         if "error" in data_obj:
+            error = data_obj['error']
+            if error.get('code') == 'MODEL_REPETITION':
+                raise ModelRepetitionLoopError(details=error.get('details'))
+            if error.get('code') in {'MODEL_GENERATION_BUDGET', 'MODEL_STREAM_LIMIT'}:
+                raise ModelStreamError(error['code'])
             raise RuntimeError(data_obj["error"].get("message", "Model execution error"))
         if data_obj.get("usage"):
             usage = data_obj["usage"]
@@ -381,6 +378,9 @@ def call_model_proxy(
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = tool_choice or "auto"
+        names = {t.get('function', {}).get('name') for t in tools}
+        if names & {'list_external_tools', 'call_external_tool'} and names <= {'read_skill', 'list_external_tools', 'call_external_tool'}:
+            payload['request_context'] = 'mcp_tool_selection'
     if purpose:
         payload["call_purpose"] = purpose
     if parent_span_id:
@@ -410,60 +410,69 @@ def call_model_proxy(
         active_tel.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose or 'tool_loop',
                                                 'model': model or 'default'})
 
-    max_retries = active_policy.model_max_retries
-    for attempt in range(max_retries + 1):
-        finish_reason = None
-        received_done = False
-        if deadline is not None:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("Task total execution deadline exceeded")
-            effective_timeout = max(1.0, min(effective_socket_to, remaining))
-        else:
-            effective_timeout = effective_socket_to
+    try:
+        max_retries = active_policy.model_max_retries
+        for attempt in range(max_retries + 1):
+            finish_reason = None
+            received_done = False
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("Task total execution deadline exceeded")
+                effective_timeout = max(1.0, min(effective_socket_to, remaining))
+            else:
+                effective_timeout = effective_socket_to
 
-        try:
-            with urllib.request.urlopen(req, timeout=effective_timeout) as response:
-                for line in response:
-                    if deadline is not None and time.monotonic() >= deadline:
-                        raise TimeoutError("Task total execution deadline exceeded while receiving model stream")
-                    l = line.decode("utf-8", errors="replace").strip()
-                    if not l.startswith("data:"):
-                        continue
-                    d = l[5:].strip()
-                    if d == "[DONE]":
-                        received_done = True
-                        break
-                    fr, us, ttft_ms = _process_sse_data(
-                        d, chunks, tool_call_deltas, start_time, ttft_ms,
-                        stream_deltas=effective_stream_deltas,
-                        thought_chunks=thought_chunks
-                    )
-                    if fr:
-                        finish_reason = fr
-                    if us:
-                        usage = us
-            break
-        except ModelRepetitionLoopError:
-            # 明确捕获思维与文本死循环熔断，严禁重试，直接抛出
-            raise
-        except urllib.error.HTTPError as e:
-            err_msg = e.read().decode("utf-8", errors="ignore")
-            if _is_transient_error(err_msg, e.code) and attempt < max_retries:
-                _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
-                continue
-            raise urllib.error.HTTPError(e.url, e.code, err_msg, e.hdrs, None)
-        except (urllib.error.URLError, ConnectionResetError):
-            if attempt < max_retries:
-                _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
-                continue
-            raise
-        except RuntimeError as e:
-            err_msg = str(e)
-            if _is_transient_error(err_msg) and attempt < max_retries:
-                _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
-                continue
-            raise
+            try:
+                with urllib.request.urlopen(req, timeout=effective_timeout) as response:
+                    for line in response:
+                        if deadline is not None and time.monotonic() >= deadline:
+                            raise TimeoutError("Task total execution deadline exceeded while receiving model stream")
+                        l = line.decode("utf-8", errors="replace").strip()
+                        if not l.startswith("data:"):
+                            continue
+                        d = l[5:].strip()
+                        if d == "[DONE]":
+                            received_done = True
+                            break
+                        fr, us, ttft_ms = _process_sse_data(
+                            d, chunks, tool_call_deltas, start_time, ttft_ms,
+                            stream_deltas=effective_stream_deltas,
+                            thought_chunks=thought_chunks
+                        )
+                        if fr:
+                            finish_reason = fr
+                        if us:
+                            usage = us
+                break
+            except ModelStreamError:
+                # 明确捕获思维与文本死循环熔断，严禁重试，直接抛出
+                raise
+            except urllib.error.HTTPError as e:
+                err_msg = e.read().decode("utf-8", errors="ignore")
+                if _is_transient_error(err_msg, e.code) and attempt < max_retries:
+                    _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
+                    continue
+                raise urllib.error.HTTPError(e.url, e.code, err_msg, e.hdrs, None)
+            except (urllib.error.URLError, ConnectionResetError):
+                if attempt < max_retries:
+                    _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
+                    continue
+                raise
+            except RuntimeError as e:
+                err_msg = str(e)
+                if _is_transient_error(err_msg) and attempt < max_retries:
+                    _apply_stream_retry_backoff(attempt, deadline, chunks, tool_call_deltas)
+                    continue
+                raise
+
+    except Exception as error:
+        if active_tel and hasattr(active_tel, 'record_model_failure'):
+            active_tel.record_model_failure(call_id=call_id, purpose=purpose or 'tool_loop',
+                model=model or 'default', total_ms=(time.time() - start_time) * 1000,
+                code=failure_code(error), usage=usage or None, content=''.join(chunks),
+                details=getattr(error, 'details', None))
+        raise
 
     total_ms = (time.time() - start_time) * 1000
     res_text = "".join(chunks).strip()

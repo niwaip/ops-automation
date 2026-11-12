@@ -158,6 +158,21 @@ docs/artifacts/reviews/**/harness-auth-preflight/
 docs/artifacts/reviews/**/*.xlsx
 docs/artifacts/reviews/**/*.zip
 docs/artifacts/reviews/**/*.pptx
+docs/artifacts/reviews/**/*.pdf
+docs/artifacts/reviews/**/*.png
+docs/artifacts/reviews/**/*.jpg
+docs/artifacts/reviews/**/*.jpeg
+docs/artifacts/reviews/**/*.ir.json
+docs/artifacts/reviews/**/*ooxml_mapping.json
+docs/artifacts/reviews/**/retired-files/
+docs/artifacts/reviews/**/jobs/
+docs/artifacts/reviews/**/job/
+docs/artifacts/reviews/**/previews/
+docs/artifacts/reviews/**/preview/
+docs/artifacts/reviews/**/source-render/
+docs/artifacts/reviews/**/renders/
+docs/artifacts/reviews/**/unpack/
+docs/artifacts/reviews/**/code-snapshot/
 
 # New review run directories (test artifacts, not source code)
 docs/artifacts/reviews/contract-compare-reaudit/
@@ -174,3 +189,23 @@ docs/artifacts/reviews/personal-skill-audit-*/
 docs/artifacts/reviews/spreadsheet-query-*/
 docs/artifacts/reviews/wbs-personal-*/
 docs/artifacts/reviews/contract-compare/run-final-20261018/
+docs/artifacts/reviews/ai-gateway-personal-kb-audit-*/
+docs/artifacts/reviews/alibaba-ai-kb-audit-*/
+docs/artifacts/reviews/mixed-retrieval-*/
+docs/artifacts/reviews/pdf-reading-engineering-*/
+docs/artifacts/reviews/pdf-summary-audit-*/
+docs/artifacts/reviews/pdf-translation-audit-*/
+docs/artifacts/reviews/pdf-translation-fix-*/
+docs/artifacts/reviews/pdf-translation-implementation-*/
+docs/artifacts/reviews/pdf-validation-logic-audit-*/
+docs/artifacts/reviews/personal-knowledge-unification-*/
+docs/artifacts/reviews/pptx-translation-audit-*/
+docs/artifacts/reviews/weather-latency-audit-*/
+docs/artifacts/reviews/xlsx-call-audit-*/
+docs/artifacts/reviews/xlsx-execution-*/
+docs/artifacts/reviews/xlsx-generic-quality-*/
+docs/artifacts/reviews/xlsx-performance-*/
+docs/artifacts/reviews/xlsx-quality-fixes-*/
+docs/artifacts/reviews/xlsx-regenerate-*/
+docs/artifacts/reviews/xlsx-stop-*/
+docs/artifacts/reviews/xlsx-timeout-*/

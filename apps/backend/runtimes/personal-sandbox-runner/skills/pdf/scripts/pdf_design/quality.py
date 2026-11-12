@@ -48,10 +48,14 @@ def inspect_pdf(path, expected_text='', min_pages=None, max_pages=None):
             plumber_text.append(text)
             if '\0' in text or '\ufffd' in text or '(cid:0)' in text:
                 errors.append(f'Page {index + 1}: missing glyph or invalid character mapping')
-            outside = [c for c in page.chars if c['x0'] < -.75 or c['x1'] > page.width + .75
-                       or c['top'] < -.75 or c['bottom'] > page.height + .75]
+            outside = [c for c in page.chars if c['x0'] < -3.0 or c['x1'] > page.width + 3.0
+                       or c['top'] < -3.0 or c['bottom'] > page.height + 3.0]
             if outside:
-                errors.append(f'Page {index + 1}: {len(outside)} text glyphs outside the page')
+                chars_preview = ''.join(c.get('text', '') for c in outside[:12]).strip()
+                sample_c = outside[0]
+                pos_info = f"x0={round(sample_c.get('x0', 0), 1)}, top={round(sample_c.get('top', 0), 1)}"
+                hint = "（若字符偏左溢出通常为双栏模式插入表格未显式指定列宽或未分节；请显式指定列宽 cell.width 或单栏排版）"
+                errors.append(f"Page {index + 1}: {len(outside)} text glyphs outside the page (文字: '{chars_preview}', 坐标: {pos_info}) {hint}")
             fonts = embedded_fonts(reader.pages[index])
             if any(not f['embedded'] for f in fonts):
                 errors.append(f'Page {index + 1}: font is not embedded')

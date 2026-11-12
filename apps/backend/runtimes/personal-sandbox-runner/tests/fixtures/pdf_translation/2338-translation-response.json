@@ -1,0 +1,45 @@
+{
+  "source": {
+    "p1_b1": "PDFMathTranslate: Scientific Document Translation Preserving Layouts",
+    "p1_b3": "1National University of Singapore, Singapore. 2Tsinghua University, Beijing, China.",
+    "p1_b4": "3University of Chinese Academy of Sciences, Beijing, China.",
+    "p1_b5": "4Funstory.ai Limited, Hong Kong SAR, China.",
+    "p1_b6": "These authors contribute equally to this work.",
+    "p1_b7": "∗Correspondence: chuc23@mails.tsinghua.edu.cn.",
+    "p1_b8": "5202 peS 22 ]LC.sc[ 4v90030.7052:viXra †",
+    "p1_b9": "Language barriers in scientific documents hinder the diffusion and development of science and technologies. However, prior efforts in translating such documents largely overlooked the information in layouts. To bridge the gap, we introduce PDFMathTranslate, the world’s first open-source software for translating scientific documents while preserving layouts. Leveraging the most recent advances in large language models and precise layout detection, we contribute to the community with key improvements in precision, flexibility, and efficiency. The work is open-sourced at https://github.com/byaidu/pdfmathtranslate with more than 222k downloads.",
+    "p1_b10": "Abstract",
+    "p1_b11": "1 Introduction",
+    "p1_b12": "Science and technologies diffuse and develop in different languages (Von Gizycki, 1973; Montgomery, 2013).",
+    "p1_b13": "Yet, language barriers hinder the diffusion and development of scientific progress (Ramírez-Castañeda, 2020; Hwang, 2005; Ammon, 2012). For example, while 98% publications in science are written in English (Liu; Ammon, 2012), the language only has 7.3% native speakers and no more than 20% speakers worldwide (Bahji et al., 2023). Consequently, the majority of human beings are hindered by language barriers from the advances in science and technologies. To overcome the barrier, there are the attempts from international organizations for inclusive sci-",
+    "p1_b14": "1 ence and the attempts from academia in improving Machine Translation (MT) over text (Brown et al., 1990; Vaswani et al., 2017; Zhu et al., 2020; Johnson et al., 2017; Sennrich et al., 2016).",
+    "p1_b15": "However, text-based machine translation fails to address the unique challenges posed by the layouts in technical translation (Schubert, 2012) where the elaborate access structure matters (pp. 351-352).",
+    "p1_b17": "Non-textual elements in scientific and technical documents are not ignorable — the arrangement of paragraphs, mathematical equations, tables, and figures have rich and important meanings. Thus, text-based machine translation ignoring such important information appear insufficient to address the barrier in scientific and technical document translation, hindering the progress of science, technologies, and society.",
+    "p1_b18": "To fill the gap, we introduce PDFMathTranslate, the world’s first open-source tool to translate PDF documents with preserved layouts. By leveraging recent advances in layout detection and large language models (see Figure 1), we better address the barrier with at least five key contributions: (1) efficient workflow of layout detection, translation, and re-rendering; (2) support for multiple languages; (3) support for multiple translation models and services; (4) diverse user interfaces; and (5) a community-commerce model affording sustainable developments.",
+    "p1_b19": "2 Architecture and Design"
+  },
+  "response": {
+    "p1_b1": "PDFMathTranslate：保留版式Scientific Document Translation",
+    "p1_b3": "1新加坡国立大学，新加坡。2清华大学，中国北京。",
+    "p1_b4": "3中国科学院大学，中国北京。",
+    "p1_b5": "4Funstory.ai有限公司，中国香港特别行政区。",
+    "p1_b6": "这些作者对本工作有同等贡献。",
+    "p1_b7": "∗通讯作者：chuc23@mails.tsinghua.edu.cn。",
+    "p1_b8": "__PDF_NUM_6913fb10bea3_0__ peS __PDF_NUM_6913fb10bea3_1__ ]LC.sc[ __PDF_NUM_6913fb10bea3_2__v__PDF_NUM_6913fb10bea3_3__:viXra †",
+    "p1_b9": "科学文献中的语言障碍阻碍了科学和技术的发展与传播。然而，之前翻译此类文献的努力往往忽视了版式中的信息。为了弥补这一空白，我们推出了PDFMathTranslate，这是世界上第一个在翻译科学文献时保留版式的开源软件。借助大型语言模型和精确版式检测的最新进展，我们在精度、灵活性和效率方面做出了关键改进，从而为社区做出贡献。该工作已开源，地址为 https://github.com/byaidu/pdfmathtranslate，下载量已超过 222k 次。",
+    "p1_b10": "摘要",
+    "p1_b11": "1 引言",
+    "p1_b12": "科学技术在不同语言中扩散和发展（Von Gizycki, 1973; Montgomery, 2013）。",
+    "p1_b13": "然而，语言障碍阻碍了科学进步的扩散和发展（Ramírez-Castañeda, __PDF_NUM_5be721c8a6ca_0__; Hwang, __PDF_NUM_5be721c8a6ca_1__; Ammon, __PDF_NUM_5be721c8a6ca_2__）。例如，虽然 __PDF_NUM_5be721c8a6ca_3__% 的科学出版物是用英语撰写的（Liu; Ammon, __PDF_NUM_5be721c8a6ca_4__），但英语只有 __PDF_NUM_5be721c8a6ca_5__% 的母语使用者，且全球使用者比例不超过 __PDF_NUM_5be721c8a6ca_6__%（Bahji 等人, __PDF_NUM_5be721c8a6ca_7__）。因此，大多数人类因语言障碍而被阻碍，无法享受科学和技术进步的成果。为了克服这一障碍，国际社会组织在包容性科学-__PDF_NUM_4deddb8b9b6b_0__方面做出了尝试，学术界则在改进文本机器学习翻译（MT）方面做出了尝试（Brown 等人, __PDF_NUM_4deddb8b9b6b_1__; Vaswani 等人, __PDF_NUM_4deddb8b9b96b_2__; Zhu 等人, __PDF_NUM_4deddb8b9b6b_3__; Johnson 等人, __PDF_NUM_4deddb8b9b6b_4__; Sennrich 等人, __PDF_NUM_4deddb8b9b6b_5__）。",
+    "p1_b14": "__PDF_NUM_4deddb8b9b6b_0__ 然而，基于文本的机器翻译无法解决技术翻译中版式带来的独特挑战（Schubert, __PDF_NUM_4d73775b69ca_0__），其中详尽的访问结构至关重要（第 __PDF_NUM_4d73775b69ca_1__-__PDF_NUM_4d73775b69ca_2__ 页）。",
+    "p1_b17": "科学和技术文档中的非文本元素不可忽视——段落、数学公式、表格和图的排列具有丰富且重要的含义。因此，忽略这些重要信息的基于文本的机器翻译似乎不足以解决科学和技术文档翻译中的障碍，从而阻碍了科学、技术和社会的进步。",
+    "p1_b18": "为了填补这一空白，我们推出了PDFMathTranslate，这是世界上第一个在翻译PDF文档时保留版式的开源工具。通过利用版式检测和大型语言模型（参见图 1）的最新进展，我们通过以下至少五项关键贡献更好地解决了这一障碍：(1) 高效的版式检测、翻译和重新渲染工作流程；(2) 支持多种语言；(3) 支持多种翻译模型和服务；(4) 多样化的用户界面；以及 (5) 允许可持续发展的社区-商业模型。",
+    "p1_b19": "2 架构与设计"
+  },
+  "errors": {
+    "p1_b8": "protected numeric tokens missing/duplicated/unknown: __PDF_NUM_6913fb10bea3_2__v__PDF_NUM_6913fb10bea3_3__",
+    "p1_b13": "protected numeric tokens missing/duplicated/unknown: __PDF_NUM_4deddb8b9b6b_0__, __PDF_NUM_4deddb8b9b6b_1__, __PDF_NUM_4deddb8b9b6b_3__, __PDF_NUM_4deddb8b9b6b_4__, __PDF_NUM_4deddb8b9b6b_5__, __PDF_NUM_4deddb8b9b96b_2__",
+    "p1_b14": "protected numeric tokens missing/duplicated/unknown: __PDF_NUM_4deddb8b9b6b_1__, __PDF_NUM_4deddb8b9b6b_2__, __PDF_NUM_4deddb8b9b6b_3__, __PDF_NUM_4deddb8b9b6b_4__, __PDF_NUM_4deddb8b9b6b_5__, __PDF_NUM_4d73775b69ca_0__, __PDF_NUM_4d73775b69ca_1__, __PDF_NUM_4d73775b69ca_2__",
+    "p1_b15": "missing or empty translated string"
+  }
+}

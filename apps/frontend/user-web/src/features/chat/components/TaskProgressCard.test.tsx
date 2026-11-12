@@ -89,6 +89,23 @@ describe('StreamingActivityCard - Progress Humanization & Status Passthrough', (
     expect(humanizeProgressText(bashResearchText)).not.toContain('python3');
     expect(humanizeProgressText(bashResearchText)).not.toContain('bash');
 
+    // 7.1. Bash OOXML XLSX translate tool call (Zero leak of bash or python path)
+    const bashXlsxText = '⚡ [Harness Tool Call] 正在调用工具: bash(cd /workspace && python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto /workspace/upload/test.xlsx)...';
+    expect(humanizeProgressText(bashXlsxText)).toBe('📊 正在进行高保真表格本地化与格式校验...');
+    expect(humanizeProgressText(bashXlsxText)).not.toContain('/workspace');
+    expect(humanizeProgressText(bashXlsxText)).not.toContain('python3');
+    expect(humanizeProgressText(bashXlsxText)).not.toContain('bash');
+
+    // 7.2. Semantic bash tool call (Clean Chinese activity)
+    const semanticBashText = '⚡ [Harness Tool Call] 正在调用工具: bash(高保真表格本地化与校验)...';
+    expect(humanizeProgressText(semanticBashText)).toBe('📊 正在进行高保真表格本地化与格式校验...');
+
+    // 7.3. TaskProgressCard humanizeTaskProgressText also scrubs technical tool calls
+    expect(humanizeTaskProgressText(bashXlsxText)).toBe('📊 正在进行高保真表格本地化与格式校验...');
+    expect(humanizeTaskProgressText(semanticBashText)).toBe('📊 正在进行高保真表格本地化与格式校验...');
+    const rawLeakedCmd = 'bash(cd /workspace && python3 test.py)';
+    expect(humanizeTaskProgressText(rawLeakedCmd)).toBe('⚙️ 正在处理数据与执行环境任务...');
+
     // 8. Deep research sub-step logs
     const hnSubStep = '  ✓ Hacker News 命中: 6 条技术争鸣与点赞讨论';
     expect(humanizeProgressText(hnSubStep)).toBe('✓ 已获取开发者社区技术讨论与评价');

@@ -721,7 +721,6 @@ def materialize_in_loop_deliverables(
             )
             if outbound_payload not in outbound_files:
                 outbound_files.append(outbound_payload)
-            executed_calls_history.append("bash")
             print(
                 f"✨ [Harness Deliverable Compiler] 检测到模型在正文中输出了生成脚本，已自动安全执行落盘: {script_artifact_path}",
                 flush=True,
@@ -744,7 +743,6 @@ def materialize_in_loop_deliverables(
             )
             if outbound_payload not in outbound_files:
                 outbound_files.append(outbound_payload)
-            executed_calls_history.append("bash")
 
     if not is_text_only_request(last_user_prompt):
         tech_artifacts_mid = materialize_config_or_code_deliverable(

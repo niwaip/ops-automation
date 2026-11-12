@@ -8,6 +8,8 @@ def _plain(text):
 
 
 def has_explicit_page_requirement(text: str) -> bool:
+    from .pdf_output_contract import pdf_page_requirement_text
+    text = pdf_page_requirement_text(text)
     if not text:
         return False
     return bool(re.search(
@@ -17,6 +19,8 @@ def has_explicit_page_requirement(text: str) -> bool:
 
 
 def bind_pdf_request(params, prompt, deadline=None, model=None, policy=None, telemetry=None):
+    from .pdf_output_contract import pdf_user_instruction
+    prompt = pdf_user_instruction(prompt)
     bound = dict(params)
     if not prompt:
         return bound

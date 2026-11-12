@@ -10,10 +10,13 @@ import { WorkspaceProcessArchiveService } from './workspace-process-archive.serv
 import { WorkspaceArtifactSyncHelper } from './workspace-artifact-sync.helper';
 import { WorkspaceNoteAiHelper } from './workspace-note-ai.helper';
 import { WorkspaceTempCleanerService } from './workspace-temp-cleaner.service';
+import { PersonalKnowledgeController } from './personal-knowledge.controller';
+import { PersonalKnowledgeService } from './personal-knowledge.service';
 
 @Module({
-  controllers: [WorkspaceController],
+  controllers: [WorkspaceController, PersonalKnowledgeController],
   providers: [
+    PersonalKnowledgeService,
     WorkspaceService,
     WorkspaceTempCleanerService,
     WorkspaceNoteService,

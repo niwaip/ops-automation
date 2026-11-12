@@ -1,0 +1,158 @@
+[
+  {
+    "time": "2026-11-06T10:53:21.331+08:00",
+    "event": "started",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:21.331+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:21.359+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:21.365+08:00",
+    "event": "model_started",
+    "purpose": "task_intent",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:25.618+08:00",
+    "event": "model_completed",
+    "purpose": "task_intent",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:25.631+08:00",
+    "event": "model_started",
+    "purpose": "task_intent_review",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:27.828+08:00",
+    "event": "model_completed",
+    "purpose": "task_intent_review",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:27.830+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:27.831+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:27.860+08:00",
+    "event": "model_started",
+    "purpose": "skill_admission",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:29.998+08:00",
+    "event": "model_completed",
+    "purpose": "skill_admission",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:30.004+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:30.006+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:53:30.100+08:00",
+    "event": "model_started",
+    "purpose": "planning",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:52.412+08:00",
+    "event": "model_completed",
+    "purpose": "planning",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:52.420+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:52.421+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:52.424+08:00",
+    "event": "model_started",
+    "purpose": "tool_loop",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:54.795+08:00",
+    "event": "model_completed",
+    "purpose": "tool_loop",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:54:54.798+08:00",
+    "event": "tool_started",
+    "purpose": null,
+    "name": "bash"
+  },
+  {
+    "time": "2026-11-06T10:55:16.447+08:00",
+    "event": "tool_completed",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:55:16.452+08:00",
+    "event": "model_started",
+    "purpose": "tool_loop",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:55:20.417+08:00",
+    "event": "model_completed",
+    "purpose": "tool_loop",
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:55:21.374+08:00",
+    "event": "guard",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:55:22.260+08:00",
+    "event": "metrics",
+    "purpose": null,
+    "name": null
+  },
+  {
+    "time": "2026-11-06T10:55:22.260+08:00",
+    "event": "finished",
+    "purpose": null,
+    "name": null
+  }
+]

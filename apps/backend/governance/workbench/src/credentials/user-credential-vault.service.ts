@@ -151,6 +151,10 @@ export class UserCredentialVaultService {
     }
 
     const data: Record<string, any> = {};
+    // MCP authorizations are rotated through the connection-specific endpoint, never generic payload editing.
+    if (existing.purpose === 'mcp_transport' && dto.payload) {
+      throw new BadRequestException('请在对应外部工具连接中更新凭证');
+    }
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.description !== undefined) data.description = dto.description?.trim() || null;
     if (dto.status !== undefined) data.status = dto.status;
@@ -217,7 +221,9 @@ export class UserCredentialVaultService {
     credentialId: string
   ): Promise<Record<string, any>> {
     const credential = await this.prisma.userCredential.findFirst({
-      where: { id: credentialId, userId, status: 'active' },
+      where: { id: credentialId, userId, status: 'active',
+        AND: [{ OR: [{ purpose: null }, { purpose: { not: 'mcp_transport' } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }] },
     });
 
     if (!credential) {
@@ -242,6 +248,8 @@ export class UserCredentialVaultService {
         userId,
         status: 'active',
         category: { in: ['api_key', 'custom'] },
+        AND: [{ OR: [{ purpose: null }, { purpose: { not: 'mcp_transport' } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
       },
     });
 
@@ -336,7 +344,8 @@ export class UserCredentialVaultService {
       });
     }
 
-    if (credential) {
+    if (credential && credential.purpose !== 'mcp_transport' &&
+        (!credential.expiresAt || new Date(credential.expiresAt).getTime() > Date.now())) {
       try {
         const payload = this.crypto.decrypt(credential.encryptedData);
         return String(payload?.token ?? payload?.apiKey ?? payload?.key ?? '').trim();
@@ -370,10 +379,11 @@ export class UserCredentialVaultService {
     if ((!resolvedProxy || !resolvedBaseUrl) && (credentialId || userId)) {
       try {
         const where: any = credentialId
-          ? { id: credentialId, status: 'active' }
+          ? { id: credentialId, userId, status: 'active' }
           : { userId, status: 'active', category: 'api_key', name: { contains: 'JINA', mode: 'insensitive' } };
         const existingCred = await this.prisma.userCredential.findFirst({ where, orderBy: { updatedAt: 'desc' } });
-        if (existingCred) {
+        if (existingCred && existingCred.userId === userId && existingCred.purpose !== 'mcp_transport' &&
+            (!existingCred.expiresAt || new Date(existingCred.expiresAt).getTime() > Date.now())) {
           const payload = this.crypto.decrypt(existingCred.encryptedData);
           if (!resolvedProxy && payload.proxyUrl) resolvedProxy = String(payload.proxyUrl).trim();
           if (!resolvedBaseUrl && payload.baseUrl) resolvedBaseUrl = String(payload.baseUrl).trim();

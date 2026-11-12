@@ -440,13 +440,18 @@ export class WorkspaceContentIndexerService {
   }
 
   /**
-   * 获取文件的纯文本视图（优先读取缓存，若无缓存且为文本/PDF则即时提取并写入缓存）
+   * 获取文本视图：文本原件直读；二进制文档允许使用可重建的提取缓存。
    */
   public async getExtractedText(
     storagePath: string,
     fileName: string,
     mimeType?: string | null
   ): Promise<string | null> {
+    // A text cache must never mask an edited/refined original shown in personal space.
+    if (this.isTextFile(fileName, mimeType)) {
+      if (!(await this.storage.exists(storagePath))) return null;
+      return (await this.storage.getFile(storagePath)).toString('utf-8');
+    }
     const cacheKey = `${storagePath}.extracted.txt`;
     if (await this.storage.exists(cacheKey)) {
       const buf = await this.storage.getFile(cacheKey);
@@ -472,13 +477,6 @@ export class WorkspaceContentIndexerService {
         text = this.cleanLegacyExtractedText(text);
       }
       return text;
-    }
-
-    if (this.isTextFile(fileName, mimeType)) {
-      if (await this.storage.exists(storagePath)) {
-        const buf = await this.storage.getFile(storagePath);
-        return buf.toString('utf-8');
-      }
     }
 
     if (

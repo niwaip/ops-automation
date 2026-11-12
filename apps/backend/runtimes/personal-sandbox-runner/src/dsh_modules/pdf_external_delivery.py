@@ -25,7 +25,7 @@ def _candidate_files(workspace, start, session_files):
             yield path
 
 
-def _stage_and_check(target, root, skill_dir, prompt, deadline):
+def _stage_and_check(target, root, skill_dir, prompt, deadline, staged_input=None):
     # Keep shell-produced PDFs private until acceptance; a printed "RC: 1"
     # inside a successful shell process can never bypass this independent check.
     folder = root / '.pdf-preview' / target.stem / uuid.uuid4().hex
@@ -33,16 +33,22 @@ def _stage_and_check(target, root, skill_dir, prompt, deadline):
         raise ValueError('PDF 验收目录不得为符号链接')
     folder.mkdir(parents=True, exist_ok=False)
     staged = folder / 'candidate.pdf'
-    os.replace(target, staged)
+    if staged_input is None:
+        os.replace(target, staged)
+    else:
+        import shutil
+        shutil.copyfile(staged_input, staged)
     from .deliverable_contract import resolve_pdf_page_bounds
-    low, high = resolve_pdf_page_bounds(prompt)
+    from .pdf_output_contract import pdf_page_requirement_text
+    requirement = pdf_page_requirement_text(prompt)
+    low, high = resolve_pdf_page_bounds(requirement)
     if low is None and high is None:
-        count = re.search(r'(\d+|[一二两三四五六七八九十])\s*页', prompt)
+        count = re.search(r'(\d+|[一二两三四五六七八九十])\s*页', requirement)
         if count:
             value = count[1]
             high = int(value) if value.isdigit() else dict(zip('一二两三四五六七八九十', [1,2,2,3,4,5,6,7,8,9,10]))[value]
-            low = None if re.search(r'最多|不超过|至多', prompt[:count.start()]) else high
-        elif re.search(r'单页|single\s*page|one\s*page', prompt, re.I):
+            low = None if re.search(r'最多|不超过|至多', requirement[:count.start()]) else high
+        elif re.search(r'单页|single\s*page|one\s*page', requirement, re.I):
             low = high = 1
     command = [sys.executable, str(Path(skill_dir) / 'pdf/scripts/check_pdf.py'),
                str(staged), '--preview-dir', str(folder)]
@@ -67,12 +73,19 @@ def _stage_and_check(target, root, skill_dir, prompt, deadline):
 
 
 def enforce_external_pdf_delivery(loop_result, workspace, skill_dir, start, prompt,
-                                  deadline=None, session_files=None):
+                                  deadline=None, session_files=None, *,
+                                  is_inspect_intent=False, is_generate_intent=False):
     """Return whether this boundary took ownership of final delivery."""
+    if is_inspect_intent and not is_generate_intent:
+        return False
     from .pdf_preview_tool import (managed_pdf_export, register_pdf_render,
         record_pdf_failure, review_current_pdf_pages, pdf_delivery_result)
+    from .pdf_translation_delivery import enforce_translation_delivery
     if managed_pdf_export(loop_result.telemetry):
         return False
+    if enforce_translation_delivery(loop_result, workspace, skill_dir, start, prompt,
+                                    deadline, session_files, _candidate_files):
+        return True
     candidates = list(_candidate_files(workspace, start, session_files))
     if not candidates:
         return False

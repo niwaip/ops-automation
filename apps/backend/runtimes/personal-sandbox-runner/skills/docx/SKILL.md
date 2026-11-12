@@ -19,6 +19,10 @@ triggers:
   - "合同审阅"
   - "修订留痕"
   - "批注"
+  - "翻译word"
+  - "翻译docx"
+  - "word翻译"
+  - "docx翻译"
 deliverables:
   - ".docx"
 requires_execution: true
@@ -42,6 +46,7 @@ default_rounds: 5
 | **合同/文档审阅修订留痕 (Tracked Changes)** | **路径二：XML 红线留痕流水线** | `unzip` → `merge_runs.py` → 注入 `<w:ins>`/`<w:del>` → `zip` → `validate.py` 严格校验。 |
 | **向已有文档添加原生侧边批注 (Comments)** | **路径三：`add_comment.py` 一键注入** | 无需解包，直接调用脚本在段落或目标文字处注入侧边原生批注。 |
 | **基于既有模板占位符批量回填** | **路径四：模板占位符替换** | 针对企业已有 `{d.party_a}` 模板，执行快速安全文本置换。 |
+| **已有 Word/DOCX 高保真翻译与多语言替换 (保持格式 100% 不变)** | **路径五：`ooxml_docx_translate.py` 一键全自动端到端翻译** | 原生解包 → 碎片合并 → 并发批量模型翻译 → 原地 XML 靶向注入与东亚字体适配，严禁手写脚本重新生成！ |
 
 ---
 
@@ -171,3 +176,64 @@ def fill_docx_placeholders(src_path, dst_path, replacements):
     doc.save(dst_path)
     print(f"SUCCESS: {dst_path}")
 ```
+
+---
+
+## 6. 场景四：已有 Word / DOCX 高保真翻译与多语言替换（保持格式 100% 不变）
+
+> ⚠️ **严禁规则**：
+> 1. **附件路径规则**：沙箱中用户上传的附件均直接位于工作区 `/workspace/<文件名>.docx`，若不确定文件名先 `ls /workspace` 确认；
+> 2. **绝对禁止**由模型自主编写 `python-docx` 重新生成文档（绝对禁止 `new_doc = Document()`，这会导致 A4 纸张变 Letter、页眉页脚与动态页码丢失、样式丢失）；
+> 3. **绝对禁止**模型在 bash 循环中手动编写数十 KB 的 Python 字典或代码！
+> 4. **必须使用沙箱内置的高性能 OOXML Word 翻译引擎**：`/opt/dsh/skills/docx/scripts/ooxml_docx_translate.py`。
+
+### 推荐方案：一键全自动端到端翻译（耗时最短、体验最优）
+直接调用 `bash` 执行沙箱内置的一键翻译流水线，脚本会自动执行解包、merge_runs 碎片整合、并发模型批量翻译、东亚字体适配、语言标记注入与结构打包：
+
+- **翻译为日文 Word 文档 (Japanese)**：
+  ```bash
+  python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py auto \
+    "/workspace/<输入文件>.docx" \
+    "/workspace/<输出文件>.docx" \
+    --lang ja-JP --font 'MS Mincho'
+  ```
+
+- **翻译为英文 Word 文档 (English)**：
+  ```bash
+  python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py auto \
+    "/workspace/<输入文件>.docx" \
+    "/workspace/<输出文件>.docx" \
+    --lang en-US --font 'Calibri'
+  ```
+
+该命令内置日企/国际商务与法律合同专业术语库、多线程并发与排版敏感型紧凑翻译法则，自动注入目标语言与东亚字体，并在 20~30 秒内完成整篇长文档的高保真本地化，母版、纸张尺寸、页眉页脚、动态页码与表格 100% 原样保留！
+
+### 备用方案：分步流水线法
+如需中间干预或查看译文数据：
+1. **第 1 步：解包提取待翻译 JSON 字典**
+   ```bash
+   python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py unpack "/workspace/<输入文件>.docx" --out-json /workspace/translation_input.json --temp-dir /workspace/.ooxml_temp
+   ```
+2. **第 2 步：并发批量翻译**
+   ```bash
+   python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py translate /workspace/translation_input.json /workspace/translation_output.json --lang ja-JP
+   ```
+3. **第 3 步：注入并重新打包**
+   ```bash
+   python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py pack /workspace/.ooxml_temp /workspace/translation_output.json "/workspace/<输出文件>.docx" --lang ja-JP --font 'MS Mincho'
+   ```
+
+### 面向用户的友好极简交付汇报规范（【极简精悍原则，篇幅控制在 250~350 字以内】）
+当打包与校验完成后，在聊天窗口向用户进行交付汇报时，必须采用**面向最终商务/法务用户的精炼、专业视角**，内容务必简洁干练，**严禁在对话框流式输出整篇 Markdown 文本（彻底避免超出 Token 限制发生截断）**：
+- 🚫 **红线约束**：
+  - **严禁输出关键术语对照字典**：严禁罗列“术语 -> 译文”对照列表，用户需要的是业务交付成果说明，不是字典；
+  - **严禁全文倾泻**：严禁在聊天窗口粘贴长篇协议译文；
+  - **严禁输出底层命令行名词**：严禁堆砌 `--font`、`unpack/pack`、`ooxml` 等内部底层名词；
+  - **严禁泄露容器路径**：严禁在回复中直接展示 `/workspace/` 等内部沙箱物理路径；
+- ✅ **标准商务交付结构（四段式，清新明快）**：
+  1. **任务完成状态（## ✅ Word 文档翻译完成）**：明确说明 Word 文档已完成高保真本地化与排版校验；
+  2. **主要处理内容（### 📋 主要处理内容）**：概述翻译覆盖的正文前言、章节条款、表格数据与签署确认栏，说明语言风格（如地道商务/法务规范用语）；
+  3. **交付成果物（### 📦 交付成果物）**：列明交付文件名，明确原文档纸张规格（A4）、版心页边距、动态页脚页码及表格结构已 100% 完整保留，引导用户点击卡片下载；
+  4. **提示与使用建议 / 警告（### 💡 提示与使用建议）**：说明跨平台标准字体适配（日文 MS Mincho / 英文 Calibri / 中文微软雅黑），或提示特定企业简称可在 Word 中灵活微调。
+- ⚠️ **失败场景规范**：若执行异常或无法生成文件，严禁输出“执行错误达到上限”等内部暗语；必须按【⚠️ 目标文件未能成功生成】明确说明原因（如文件密码保护或宏脚本不兼容），并提供 3 条清晰可操作的下一步建议。
+

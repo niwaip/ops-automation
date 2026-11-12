@@ -1,0 +1,1561 @@
+[
+  {
+    "id": "p5",
+    "number": 5,
+    "width_pt": 595.276,
+    "height_pt": 841.89,
+    "lines": [
+      {
+        "id": "p5_l1",
+        "text": "OURS",
+        "rotated": false,
+        "bbox": [
+          247.6,
+          85.05,
+          277.91,
+          95.96
+        ]
+      },
+      {
+        "id": "p5_l2",
+        "text": "IMT5",
+        "rotated": false,
+        "bbox": [
+          294.02,
+          83.47,
+          318.0,
+          96.03
+        ]
+      },
+      {
+        "id": "p5_l3",
+        "text": "Doc2X",
+        "rotated": false,
+        "bbox": [
+          330.14,
+          85.13,
+          361.64,
+          96.03
+        ]
+      },
+      {
+        "id": "p5_l4",
+        "text": "TeX based6",
+        "rotated": false,
+        "bbox": [
+          373.6,
+          83.47,
+          423.77,
+          96.03
+        ]
+      },
+      {
+        "id": "p5_l5",
+        "text": "Google",
+        "rotated": false,
+        "bbox": [
+          431.74,
+          85.13,
+          463.86,
+          96.03
+        ]
+      },
+      {
+        "id": "p5_l6",
+        "text": "DeepL",
+        "rotated": false,
+        "bbox": [
+          475.81,
+          85.13,
+          505.5,
+          96.03
+        ]
+      },
+      {
+        "id": "p5_l7",
+        "text": "Open-source",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          99.07,
+          217.17,
+          109.98
+        ]
+      },
+      {
+        "id": "p5_l8",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          96.72,
+          266.87,
+          107.63
+        ]
+      },
+      {
+        "id": "p5_l9",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          392.57,
+          96.72,
+          400.81,
+          107.63
+        ]
+      },
+      {
+        "id": "p5_l10",
+        "text": "Deployment",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          112.62,
+          215.26,
+          123.53
+        ]
+      },
+      {
+        "id": "p5_l11",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          110.27,
+          266.87,
+          121.17
+        ]
+      },
+      {
+        "id": "p5_l12",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          392.57,
+          110.27,
+          400.81,
+          121.17
+        ]
+      },
+      {
+        "id": "p5_l13",
+        "text": "Accessibility",
+        "rotated": false,
+        "bbox": [
+          92.51,
+          119.4,
+          149.48,
+          130.31
+        ]
+      },
+      {
+        "id": "p5_l14",
+        "text": "API integration",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          126.17,
+          228.84,
+          137.08
+        ]
+      },
+      {
+        "id": "p5_l15",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          123.81,
+          266.87,
+          134.72
+        ]
+      },
+      {
+        "id": "p5_l16",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          341.77,
+          123.81,
+          350.01,
+          134.72
+        ]
+      },
+      {
+        "id": "p5_l17",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          443.68,
+          123.81,
+          451.92,
+          134.72
+        ]
+      },
+      {
+        "id": "p5_l18",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          486.53,
+          123.81,
+          494.77,
+          134.72
+        ]
+      },
+      {
+        "id": "p5_l19",
+        "text": "Price",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          139.72,
+          183.85,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l20",
+        "text": "Free",
+        "rotated": false,
+        "bbox": [
+          252.25,
+          139.64,
+          273.25,
+          150.55
+        ]
+      },
+      {
+        "id": "p5_l21",
+        "text": "Paid",
+        "rotated": false,
+        "bbox": [
+          294.4,
+          139.72,
+          313.63,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l22",
+        "text": "Paid",
+        "rotated": false,
+        "bbox": [
+          336.27,
+          139.72,
+          355.5,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l23",
+        "text": "Free",
+        "rotated": false,
+        "bbox": [
+          387.0,
+          139.72,
+          406.38,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l24",
+        "text": "Free",
+        "rotated": false,
+        "bbox": [
+          438.11,
+          139.72,
+          457.49,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l25",
+        "text": "Paid",
+        "rotated": false,
+        "bbox": [
+          481.03,
+          139.72,
+          500.27,
+          150.63
+        ]
+      },
+      {
+        "id": "p5_l26",
+        "text": "Layout1",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          152.01,
+          196.32,
+          164.58
+        ]
+      },
+      {
+        "id": "p5_l27",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          151.31,
+          266.87,
+          162.22
+        ]
+      },
+      {
+        "id": "p5_l28",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          299.9,
+          151.31,
+          308.14,
+          162.22
+        ]
+      },
+      {
+        "id": "p5_l29",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          341.77,
+          151.31,
+          350.01,
+          162.22
+        ]
+      },
+      {
+        "id": "p5_l30",
+        "text": "Formula2",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          165.56,
+          202.22,
+          178.13
+        ]
+      },
+      {
+        "id": "p5_l31",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          164.86,
+          266.87,
+          175.77
+        ]
+      },
+      {
+        "id": "p5_l32",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          299.9,
+          164.86,
+          308.14,
+          175.77
+        ]
+      },
+      {
+        "id": "p5_l33",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          341.77,
+          164.86,
+          350.01,
+          175.77
+        ]
+      },
+      {
+        "id": "p5_l34",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          392.58,
+          164.86,
+          400.81,
+          175.77
+        ]
+      },
+      {
+        "id": "p5_l35",
+        "text": "Readability",
+        "rotated": false,
+        "bbox": [
+          92.51,
+          173.99,
+          142.81,
+          184.9
+        ]
+      },
+      {
+        "id": "p5_l36",
+        "text": "Bilingual3",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          179.11,
+          206.03,
+          191.68
+        ]
+      },
+      {
+        "id": "p5_l37",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          178.41,
+          266.87,
+          189.32
+        ]
+      },
+      {
+        "id": "p5_l38",
+        "text": "Partial",
+        "rotated": false,
+        "bbox": [
+          289.86,
+          180.77,
+          318.18,
+          191.68
+        ]
+      },
+      {
+        "id": "p5_l39",
+        "text": "Partial",
+        "rotated": false,
+        "bbox": [
+          331.72,
+          180.77,
+          360.04,
+          191.68
+        ]
+      },
+      {
+        "id": "p5_l40",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          392.58,
+          178.41,
+          400.81,
+          189.32
+        ]
+      },
+      {
+        "id": "p5_l41",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          443.67,
+          178.41,
+          451.91,
+          189.32
+        ]
+      },
+      {
+        "id": "p5_l42",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          486.54,
+          178.41,
+          494.77,
+          189.32
+        ]
+      },
+      {
+        "id": "p5_l43",
+        "text": "OCR4",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          192.66,
+          187.85,
+          205.23
+        ]
+      },
+      {
+        "id": "p5_l44",
+        "text": "✓7",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          191.96,
+          270.86,
+          202.87
+        ]
+      },
+      {
+        "id": "p5_l45",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          299.9,
+          191.96,
+          308.14,
+          202.87
+        ]
+      },
+      {
+        "id": "p5_l46",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          341.77,
+          191.96,
+          350.01,
+          202.87
+        ]
+      },
+      {
+        "id": "p5_l47",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          443.68,
+          191.96,
+          451.92,
+          202.87
+        ]
+      },
+      {
+        "id": "p5_l48",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          486.53,
+          191.96,
+          494.77,
+          202.87
+        ]
+      },
+      {
+        "id": "p5_l49",
+        "text": "Batch tasks",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          208.26,
+          211.43,
+          219.17
+        ]
+      },
+      {
+        "id": "p5_l50",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          258.63,
+          205.91,
+          266.87,
+          216.82
+        ]
+      },
+      {
+        "id": "p5_l51",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          341.77,
+          205.91,
+          350.01,
+          216.82
+        ]
+      },
+      {
+        "id": "p5_l52",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          392.57,
+          205.91,
+          400.81,
+          216.82
+        ]
+      },
+      {
+        "id": "p5_l53",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          443.68,
+          205.91,
+          451.92,
+          216.82
+        ]
+      },
+      {
+        "id": "p5_l54",
+        "text": "✓",
+        "rotated": false,
+        "bbox": [
+          486.53,
+          205.91,
+          494.77,
+          216.82
+        ]
+      },
+      {
+        "id": "p5_l55",
+        "text": "Efficiency",
+        "rotated": false,
+        "bbox": [
+          92.51,
+          215.04,
+          136.91,
+          225.95
+        ]
+      },
+      {
+        "id": "p5_l56",
+        "text": "Speed (sec/page)",
+        "rotated": false,
+        "bbox": [
+          161.43,
+          221.81,
+          235.65,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l57",
+        "text": "1.47",
+        "rotated": false,
+        "bbox": [
+          253.21,
+          221.74,
+          272.3,
+          232.65
+        ]
+      },
+      {
+        "id": "p5_l58",
+        "text": "1.50",
+        "rotated": false,
+        "bbox": [
+          294.48,
+          221.81,
+          313.57,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l59",
+        "text": "1.86",
+        "rotated": false,
+        "bbox": [
+          336.35,
+          221.81,
+          355.44,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l60",
+        "text": "1.67",
+        "rotated": false,
+        "bbox": [
+          387.14,
+          221.81,
+          406.23,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l61",
+        "text": "0.38",
+        "rotated": false,
+        "bbox": [
+          438.25,
+          221.81,
+          457.34,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l62",
+        "text": "1.88",
+        "rotated": false,
+        "bbox": [
+          481.11,
+          221.81,
+          500.2,
+          232.72
+        ]
+      },
+      {
+        "id": "p5_l63",
+        "text": "1",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          236.3,
+          98.25,
+          242.27
+        ]
+      },
+      {
+        "id": "p5_l64",
+        "text": "Whether the tool can preserve figures, images, and formulas (although the formulas may be incorrectly displayed).",
+        "rotated": false,
+        "bbox": [
+          102.47,
+          237.76,
+          513.05,
+          246.73
+        ]
+      },
+      {
+        "id": "p5_l65",
+        "text": "2",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          246.26,
+          98.25,
+          252.24
+        ]
+      },
+      {
+        "id": "p5_l66",
+        "text": "Whether the tool can translate documents containing formulas and correctly handle the positions of the formulas.",
+        "rotated": false,
+        "bbox": [
+          102.47,
+          247.72,
+          507.88,
+          256.69
+        ]
+      },
+      {
+        "id": "p5_l67",
+        "text": "3",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          256.22,
+          98.25,
+          262.2
+        ]
+      },
+      {
+        "id": "p5_l68",
+        "text": "Whether the tool supports bilingual exports where both the original and translated text are simultaneously readable.",
+        "rotated": false,
+        "bbox": [
+          102.47,
+          257.69,
+          513.04,
+          266.65
+        ]
+      },
+      {
+        "id": "p5_l69",
+        "text": "4",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          266.18,
+          98.25,
+          272.16
+        ]
+      },
+      {
+        "id": "p5_l70",
+        "text": "Whether the tool can handle scanned documents instead of digital documents.",
+        "rotated": false,
+        "bbox": [
+          102.47,
+          267.65,
+          381.63,
+          276.62
+        ]
+      },
+      {
+        "id": "p5_l71",
+        "text": "5",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          276.15,
+          98.25,
+          282.12
+        ]
+      },
+      {
+        "id": "p5_l72",
+        "text": "IMT: Immersive Translate PDF Pro.",
+        "rotated": false,
+        "bbox": [
+          102.89,
+          277.61,
+          232.52,
+          286.58
+        ]
+      },
+      {
+        "id": "p5_l73",
+        "text": "6",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          286.11,
+          98.25,
+          292.09
+        ]
+      },
+      {
+        "id": "p5_l74",
+        "text": "The original LaTeX file is required for translation.",
+        "rotated": false,
+        "bbox": [
+          102.62,
+          287.58,
+          282.78,
+          296.54
+        ]
+      },
+      {
+        "id": "p5_l75",
+        "text": "7",
+        "rotated": false,
+        "bbox": [
+          95.26,
+          296.07,
+          98.25,
+          302.05
+        ]
+      },
+      {
+        "id": "p5_l76",
+        "text": "Available in a community fork: PDFMathTranslate/PDFMathTranslate-next.",
+        "rotated": false,
+        "bbox": [
+          102.57,
+          297.16,
+          390.13,
+          306.5
+        ]
+      },
+      {
+        "id": "p5_l77",
+        "text": "Table 1: Comparison with other projects and productions",
+        "rotated": false,
+        "bbox": [
+          183.72,
+          317.03,
+          411.25,
+          326.99
+        ]
+      },
+      {
+        "id": "p5_l78",
+        "text": "Figure 4: Use cases.",
+        "rotated": false,
+        "bbox": [
+          257.22,
+          748.51,
+          338.06,
+          758.47
+        ]
+      }
+    ],
+    "table_candidates": [
+      [
+        86.532,
+        81.99400000000003,
+        511.471,
+        236.62900000000002
+      ]
+    ],
+    "visual_bounds": [
+      [
+        93.545,
+        362.25274,
+        501.73283000000004,
+        737.9879999999999
+      ]
+    ]
+  },
+  {
+    "id": "p7",
+    "number": 7,
+    "width_pt": 595.276,
+    "height_pt": 841.89,
+    "lines": [
+      {
+        "id": "p7_l1",
+        "text": "Wybxc. 2025. feat: onnx support by Wybxc · Pull",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          73.8,
+          289.13,
+          83.98
+        ]
+      },
+      {
+        "id": "p7_l2",
+        "text": "Request #116 · Byaidu/PDFMathTranslate. [Online;",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          84.75,
+          289.96,
+          94.94
+        ]
+      },
+      {
+        "id": "p7_l3",
+        "text": "accessed 18. Mar. 2025].",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          95.93,
+          180.82,
+          105.89
+        ]
+      },
+      {
+        "id": "p7_l4",
+        "text": "Zhiyuan Zhao, Hengrui Kang, Bin Wang, and Conghui",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          115.86,
+          289.14,
+          125.82
+        ]
+      },
+      {
+        "id": "p7_l5",
+        "text": "He. 2024. DocLayout-YOLO: Enhancing Document",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          126.82,
+          289.14,
+          136.78
+        ]
+      },
+      {
+        "id": "p7_l6",
+        "text": "Layout Analysis through Diverse Synthetic Data",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          137.78,
+          289.14,
+          147.74
+        ]
+      },
+      {
+        "id": "p7_l7",
+        "text": "and Global-to-Local Adaptive Perception. Preprint,",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          148.51,
+          290.38,
+          158.7
+        ]
+      },
+      {
+        "id": "p7_l8",
+        "text": "arXiv:2410.12628.",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          159.69,
+          156.79,
+          169.66
+        ]
+      },
+      {
+        "id": "p7_l9",
+        "text": "Jinhua Zhu, Yingce Xia, Lijun Wu, Di He, Tao Qin,",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          179.62,
+          290.38,
+          189.58
+        ]
+      },
+      {
+        "id": "p7_l10",
+        "text": "Wengang Zhou, Houqiang Li, and Tie-Yan Liu. 2020.",
+        "rotated": false,
+        "bbox": [
+          81.31,
+          190.58,
+          290.88,
+          200.54
+        ]
+      },
+      {
+        "id": "p7_l11",
+        "text": "Incorporating BERT into Neural Machine Transla-",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          201.54,
+          290.78,
+          211.5
+        ]
+      },
+      {
+        "id": "p7_l12",
+        "text": "tion. Preprint, arXiv:2002.06823.",
+        "rotated": false,
+        "bbox": [
+          81.78,
+          212.27,
+          216.75,
+          222.46
+        ]
+      },
+      {
+        "id": "p7_l13",
+        "text": "A Appendix",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          234.76,
+          140.98,
+          246.71
+        ]
+      },
+      {
+        "id": "p7_l14",
+        "text": "A.1 Officially supported language and",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          256.5,
+          255.74,
+          267.41
+        ]
+      },
+      {
+        "id": "p7_l15",
+        "text": "services",
+        "rotated": false,
+        "bbox": [
+          97.83,
+          270.05,
+          134.07,
+          280.96
+        ]
+      },
+      {
+        "id": "p7_l16",
+        "text": "In Table 2, we enumerate the officially supported",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          287.6,
+          289.14,
+          298.51
+        ]
+      },
+      {
+        "id": "p7_l17",
+        "text": "services, models, and languages. However, the",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          301.15,
+          289.14,
+          312.06
+        ]
+      },
+      {
+        "id": "p7_l18",
+        "text": "actual number may be significantly higher due to",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          314.7,
+          289.14,
+          325.61
+        ]
+      },
+      {
+        "id": "p7_l19",
+        "text": "the extensibility of services and models.",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          328.25,
+          245.84,
+          339.16
+        ]
+      },
+      {
+        "id": "p7_l20",
+        "text": "Table 2: Supported languages and services for transla-",
+        "rotated": false,
+        "bbox": [
+          70.56,
+          351.68,
+          290.79,
+          361.64
+        ]
+      },
+      {
+        "id": "p7_l21",
+        "text": "tion in PDFMathTranslate",
+        "rotated": false,
+        "bbox": [
+          70.87,
+          363.63,
+          175.12,
+          373.59
+        ]
+      },
+      {
+        "id": "p7_l22",
+        "text": "Category",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          386.32,
+          116.67,
+          397.23
+        ]
+      },
+      {
+        "id": "p7_l23",
+        "text": "Details",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          386.32,
+          164.24,
+          397.23
+        ]
+      },
+      {
+        "id": "p7_l24",
+        "text": "Total",
+        "rotated": false,
+        "bbox": [
+          453.69,
+          386.32,
+          475.84,
+          397.23
+        ]
+      },
+      {
+        "id": "p7_l25",
+        "text": "Service or",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          400.27,
+          121.37,
+          411.18
+        ]
+      },
+      {
+        "id": "p7_l26",
+        "text": "Google (default), 302.AI, Bing, DeepL, DeepLX, Ollama, Ali Qwen,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          400.02,
+          435.1,
+          411.18
+        ]
+      },
+      {
+        "id": "p7_l27",
+        "text": "23",
+        "rotated": false,
+        "bbox": [
+          453.69,
+          400.02,
+          464.6,
+          410.93
+        ]
+      },
+      {
+        "id": "p7_l28",
+        "text": "models",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          413.82,
+          108.36,
+          424.73
+        ]
+      },
+      {
+        "id": "p7_l29",
+        "text": "Ollama, Xinference, Gemma, OpenAI, OpenAI-like , DeepSeek,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          413.82,
+          415.56,
+          424.73
+        ]
+      },
+      {
+        "id": "p7_l30",
+        "text": "AzureOpenAI, Zhipu, ModelScope, Silicon Cloud, Gemini, Azure,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          427.37,
+          426.02,
+          438.28
+        ]
+      },
+      {
+        "id": "p7_l31",
+        "text": "Tencent, Dify, AnythingLLM, Argos Translate, Grok, Groq",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          440.92,
+          392.58,
+          451.83
+        ]
+      },
+      {
+        "id": "p7_l32",
+        "text": "Input and",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          454.87,
+          118.35,
+          465.77
+        ]
+      },
+      {
+        "id": "p7_l33",
+        "text": "Abkhaz, Acehnese, Acholi, Afrikaans, Albanian, Alur, Amharic,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          454.87,
+          415.55,
+          465.77
+        ]
+      },
+      {
+        "id": "p7_l34",
+        "text": "194",
+        "rotated": false,
+        "bbox": [
+          453.69,
+          454.61,
+          470.05,
+          465.52
+        ]
+      },
+      {
+        "id": "p7_l35",
+        "text": "output",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          468.41,
+          104.73,
+          479.32
+        ]
+      },
+      {
+        "id": "p7_l36",
+        "text": "Arabic, Armenian, Assamese, Awadhi, Aymara, Azerbaijani, Balinese,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          468.41,
+          441.74,
+          479.32
+        ]
+      },
+      {
+        "id": "p7_l37",
+        "text": "languages",
+        "rotated": false,
+        "bbox": [
+          76.84,
+          481.96,
+          120.47,
+          492.87
+        ]
+      },
+      {
+        "id": "p7_l38",
+        "text": "Bambara, Bashkir, Basque, Batak Karo, Batak Simalungun,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          481.96,
+          393.78,
+          492.87
+        ]
+      },
+      {
+        "id": "p7_l39",
+        "text": "Batak Toba, Belarusian, Bemba, Bengali, Betawi, Bhojpuri,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          495.51,
+          394.03,
+          506.42
+        ]
+      },
+      {
+        "id": "p7_l40",
+        "text": "Bikol, Bosnian, Breton, Bulgarian, Buryat, Cantonese,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          509.06,
+          371.04,
+          519.97
+        ]
+      },
+      {
+        "id": "p7_l41",
+        "text": "Catalan, Cebuano, Chichewa (Nyanja), Chinese (Simplified),",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          522.61,
+          399.66,
+          533.52
+        ]
+      },
+      {
+        "id": "p7_l42",
+        "text": "Chinese (Traditional), Chuvash, Corsican, Crimean Tatar,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          536.16,
+          384.36,
+          547.07
+        ]
+      },
+      {
+        "id": "p7_l43",
+        "text": "Croatian, Czech, Danish, Dinka, Divehi, Dogri, Dombe,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          549.71,
+          378.01,
+          560.62
+        ]
+      },
+      {
+        "id": "p7_l44",
+        "text": "Dutch, Dzongkha, English, Esperanto, Estonian, Ewe,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          563.26,
+          369.36,
+          574.17
+        ]
+      },
+      {
+        "id": "p7_l45",
+        "text": "Fijian, Filipino (Tagalog), Finnish, French,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          576.81,
+          320.29,
+          587.72
+        ]
+      },
+      {
+        "id": "p7_l46",
+        "text": "French (French), French (Canadian), Frisian,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          590.36,
+          329.34,
+          601.27
+        ]
+      },
+      {
+        "id": "p7_l47",
+        "text": "Fulfulde, Ga, Galician, Ganda (Luganda), Georgian,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          603.91,
+          361.5,
+          614.82
+        ]
+      },
+      {
+        "id": "p7_l48",
+        "text": "German, Greek, Guarani, Gujarati, Haitian Creole,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          617.46,
+          354.48,
+          628.36
+        ]
+      },
+      {
+        "id": "p7_l49",
+        "text": "Hakha Chin, Hausa, Hawaiian, Hebrew, Hiligaynon,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          631.0,
+          361.67,
+          641.91
+        ]
+      },
+      {
+        "id": "p7_l50",
+        "text": "Hindi, Hmong, Hungarian, Hunsrik, Icelandic, Igbo,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          644.55,
+          362.03,
+          655.46
+        ]
+      },
+      {
+        "id": "p7_l51",
+        "text": "Iloko, Indonesian, Irish, Italian, Japanese, Javanese,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          658.1,
+          359.04,
+          669.01
+        ]
+      },
+      {
+        "id": "p7_l52",
+        "text": "Kannada, Kapampangan, Kazakh, Khmer, Kiga, Kinyarwanda,",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          671.65,
+          407.88,
+          682.56
+        ]
+      },
+      {
+        "id": "p7_l53",
+        "text": "Kituba, Konkani, Korean, Krio, Kurdish (Kurmanji),",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          685.2,
+          363.11,
+          696.11
+        ]
+      },
+      {
+        "id": "p7_l54",
+        "text": "Kurdish (Sorani), Kyrgyz, Lao, Latgalian, Latin, etc.",
+        "rotated": false,
+        "bbox": [
+          133.33,
+          698.75,
+          362.9,
+          709.66
+        ]
+      },
+      {
+        "id": "p7_l55",
+        "text": "1",
+        "rotated": false,
+        "bbox": [
+          87.23,
+          713.1,
+          90.88,
+          719.08
+        ]
+      },
+      {
+        "id": "p7_l56",
+        "text": "The number of supported languages far exceeds what is shown in the table. Our protocol, designed as a general",
+        "rotated": false,
+        "bbox": [
+          93.62,
+          714.7,
+          495.81,
+          723.67
+        ]
+      },
+      {
+        "id": "p7_l57",
+        "text": "framework for OpenAI-like services, allows users to integrate any translation system, including locally hosted",
+        "rotated": false,
+        "bbox": [
+          87.23,
+          724.66,
+          495.81,
+          733.63
+        ]
+      },
+      {
+        "id": "p7_l58",
+        "text": "models or private online services, ensuring extensive language support.",
+        "rotated": false,
+        "bbox": [
+          87.23,
+          734.63,
+          342.29,
+          743.59
+        ]
+      },
+      {
+        "id": "p7_l59",
+        "text": "2",
+        "rotated": false,
+        "bbox": [
+          87.23,
+          742.99,
+          90.88,
+          748.97
+        ]
+      },
+      {
+        "id": "p7_l60",
+        "text": "Based on the default service (Google Translate) and interface (CLI).",
+        "rotated": false,
+        "bbox": [
+          93.62,
+          744.59,
+          338.14,
+          753.55
+        ]
+      }
+    ],
+    "table_candidates": [
+      [
+        70.866,
+        383.191,
+        481.825,
+        713.567
+      ]
+    ],
+    "visual_bounds": []
+  }
+]

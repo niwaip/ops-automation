@@ -61,9 +61,19 @@ const humanizeSingleLine = (rawLine: string): string | undefined => {
         lowerP.includes('deep_research') ||
         lowerP.includes('research') ||
         lowerP.includes('hn') ||
-        lowerP.includes('github')
+        lowerP.includes('github') ||
+        lowerP.includes('调研') ||
+        lowerP.includes('检索')
       ) {
         return '🔍 正在深度采集全网多源评测与讨论...';
+      }
+      if (
+        lowerP.includes('表格') ||
+        lowerP.includes('xlsx') ||
+        lowerP.includes('spreadsheet') ||
+        lowerP.includes('excel')
+      ) {
+        return '📊 正在进行高保真表格本地化与格式校验...';
       }
       if (
         lowerP.includes('pdf') ||
@@ -71,11 +81,19 @@ const humanizeSingleLine = (rawLine: string): string | undefined => {
         lowerP.includes('carbone') ||
         lowerP.includes('docx') ||
         lowerP.includes('pptx') ||
-        lowerP.includes('xlsx')
+        lowerP.includes('文档') ||
+        lowerP.includes('排版') ||
+        lowerP.includes('编译')
       ) {
         return '⚙️ 正在排版与编译交付文档...';
       }
-      if (lowerP.includes('python') || lowerP.includes('.py') || lowerP.includes('pip')) {
+      if (
+        lowerP.includes('python') ||
+        lowerP.includes('.py') ||
+        lowerP.includes('pip') ||
+        lowerP.includes('数据分析') ||
+        lowerP.includes('计算')
+      ) {
         return '⚙️ 正在处理数据与执行分析任务...';
       }
       return '⚙️ 正在处理数据与执行环境任务...';

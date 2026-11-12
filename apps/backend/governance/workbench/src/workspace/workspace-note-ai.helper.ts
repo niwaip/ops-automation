@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
@@ -98,7 +97,7 @@ export class WorkspaceNoteAiHelper {
         '{',
         `  "folderName": "规范命名的专属文件夹名称。必须严格遵守格式：${dateTag}_[分类标签]_[核心业务主题]，例如：${dateTag}_技术调研_DeepSeek Harness安装配置指南，或者 ${dateTag}_架构设计_分布式工作流编排方案。分类为2~4个汉字，核心主题为6~20个汉字，不要有特殊符号",`,
         '  "title": "高度凝练、结构清晰的中文文档标题（不超过 30 个字，包含关键实体与事件）",',
-        '  "tags": ["3~6个紧密关联本会话具体内容的核心技术/业务标签（如技术栈名、工具名、架构模块、方案类型等，例如：DeepSeek、Harness、环境部署、安装配置、技术调研），严禁输出' + "'AI沉淀'、'问答沉淀'、'知识候选'、'总结'等无意义泛化空话" + '"],',
+        '  "tags": ["3~6个紧密关联本会话具体内容的核心实体与领域专有名词（每个标签必须为2~6字的专有名词，如公司名、产品名、业务领域名、技术栈名，例如：DeepSeek、Harness、网络安全、财务自动化、态势感知、容器运维、三景贸易）。【严禁动词与泛词】：严禁输出包含“解决方案”、“解决”、“安装配置”、“环境部署”、“技术调研”、“论文分析”、“分析”、“报告”、“总结”、“指南”等动词或文体泛词，严禁输出“AI沉淀”、“知识候选”等空洞标签"],',
         '  "summary": "150~250字的高浓度业务与运维执行摘要",',
         '  "refinedContent": "清洗去噪、层级分明的结构化 Markdown 正文（包含核心结论、关键细节与实操建议，不要包含一级标题，使用 ## 与 ### 分块。若原文包含图片语法 ![...](...)，请务必在正文相应位置原样保留完整的图片引用语法，严禁丢弃图片！）",',
         '  "artifactsDescription": [',
@@ -338,70 +337,7 @@ export class WorkspaceNoteAiHelper {
         .trim();
       const newFileName = `${safeFileTopic}.md`;
 
-      // 同步重命名与刷新用户沙箱成果库目录 (/workspace/deliverables/)
-      try {
-        const candidateRoots = [
-          path.join('/workspace/data/users', userId, 'workspace'),
-          path.join(process.cwd(), 'data/users', userId, 'workspace'),
-          path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
-        ];
-        for (const cand of candidateRoots) {
-          if (fs.existsSync(cand)) {
-            const deliverablesBase = path.join(cand, 'deliverables');
-            if (!fs.existsSync(deliverablesBase)) {
-              fs.mkdirSync(deliverablesBase, { recursive: true });
-            }
-            const oldDirPath = path.join(deliverablesBase, currentFolderName);
-            const newDirPath = path.join(deliverablesBase, finalFolderName);
-
-            // 若文件夹名称发生更名且旧文件夹存在
-            if (currentFolderName && currentFolderName !== finalFolderName && fs.existsSync(oldDirPath)) {
-              if (!fs.existsSync(newDirPath)) {
-                fs.renameSync(oldDirPath, newDirPath);
-              } else {
-                // 若新文件夹已存在，将旧目录文件迁移入新目录后删除旧目录
-                const files = fs.readdirSync(oldDirPath);
-                for (const f of files) {
-                  const src = path.join(oldDirPath, f);
-                  const dst = path.join(newDirPath, f);
-                  if (!fs.existsSync(dst)) {
-                    fs.renameSync(src, dst);
-                  }
-                }
-                try {
-                  fs.rmdirSync(oldDirPath);
-                } catch {
-                  // ignore
-                }
-              }
-            } else if (!fs.existsSync(newDirPath)) {
-              fs.mkdirSync(newDirPath, { recursive: true });
-            }
-
-            // 写入最新提炼的 Markdown 文件
-            const targetFilePath = path.join(newDirPath, newFileName);
-            fs.writeFileSync(targetFilePath, newBuffer);
-
-            // 若文件名变更，清理旧的残留文件
-            if (
-              params.currentNoteFileName &&
-              params.currentNoteFileName !== newFileName &&
-              fs.existsSync(path.join(newDirPath, params.currentNoteFileName))
-            ) {
-              try {
-                fs.unlinkSync(path.join(newDirPath, params.currentNoteFileName));
-              } catch {
-                // ignore
-              }
-            }
-            break;
-          }
-        }
-      } catch (diskSyncErr: any) {
-        this.logger.warn(
-          `Failed to synchronize refined folder and note to deliverables on disk: ${diskSyncErr.message}`
-        );
-      }
+      // Refinement updates the authoritative storage object; no sandbox mirror is written.
 
       // 提取目录 headings
       const headings = newMarkdownText

@@ -1,0 +1,1047 @@
+{
+  "id": "p1",
+  "number": 1,
+  "width_pt": 595.276,
+  "height_pt": 841.89,
+  "rotation": 0,
+  "lines": [
+    {
+      "id": "p1_l1",
+      "text": "PDFMathTranslate: Scientific Document Translation Preserving Layouts",
+      "rotated": false,
+      "bbox": [
+        74.11,
+        78.4,
+        521.18,
+        92.75
+      ]
+    },
+    {
+      "id": "p1_l2",
+      "text": "Rongxin Ouyang1,†, Chang Chu2,†,∗, Zhikuang Xin3, Xiangyao Ma4",
+      "rotated": false,
+      "bbox": [
+        129.5,
+        109.13,
+        468.27,
+        122.39
+      ]
+    },
+    {
+      "id": "p1_l3",
+      "text": "1National University of Singapore, Singapore. 2Tsinghua University, Beijing, China.",
+      "rotated": false,
+      "bbox": [
+        95.64,
+        123.25,
+        499.63,
+        136.42
+      ]
+    },
+    {
+      "id": "p1_l4",
+      "text": "3University of Chinese Academy of Sciences, Beijing, China.",
+      "rotated": false,
+      "bbox": [
+        150.53,
+        137.2,
+        444.75,
+        150.37
+      ]
+    },
+    {
+      "id": "p1_l5",
+      "text": "4Funstory.ai Limited, Hong Kong SAR, China.",
+      "rotated": false,
+      "bbox": [
+        185.57,
+        151.15,
+        409.71,
+        164.32
+      ]
+    },
+    {
+      "id": "p1_l6",
+      "text": "†",
+      "rotated": false,
+      "bbox": [
+        184.45,
+        165.03,
+        188.21,
+        173.0
+      ]
+    },
+    {
+      "id": "p1_l7",
+      "text": "These authors contribute equally to this work.",
+      "rotated": false,
+      "bbox": [
+        191.7,
+        166.42,
+        410.83,
+        178.37
+      ]
+    },
+    {
+      "id": "p1_l8",
+      "text": "∗Correspondence: chuc23@mails.tsinghua.edu.cn.",
+      "rotated": false,
+      "bbox": [
+        173.47,
+        178.98,
+        421.81,
+        192.32
+      ]
+    },
+    {
+      "id": "p1_l9",
+      "text": "Abstract",
+      "rotated": false,
+      "bbox": [
+        157.76,
+        221.41,
+        202.24,
+        233.36
+      ]
+    },
+    {
+      "id": "p1_l10",
+      "text": "Non-textual elements in scientific and technical",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        222.31,
+        524.41,
+        233.22
+      ]
+    },
+    {
+      "id": "p1_l11",
+      "text": "documents are not ignorable — the arrangement",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        235.86,
+        524.41,
+        246.77
+      ]
+    },
+    {
+      "id": "p1_l12",
+      "text": "Language barriers in scientific documents hin-",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        246.1,
+        273.77,
+        256.06
+      ]
+    },
+    {
+      "id": "p1_l13",
+      "text": "5202",
+      "rotated": true,
+      "bbox": [
+        16.34,
+        247.62,
+        36.34,
+        287.62
+      ]
+    },
+    {
+      "id": "p1_l14",
+      "text": "of paragraphs, mathematical equations, tables, and",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        249.41,
+        524.41,
+        260.32
+      ]
+    },
+    {
+      "id": "p1_l15",
+      "text": "der the diffusion and development of science",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        258.06,
+        272.13,
+        268.02
+      ]
+    },
+    {
+      "id": "p1_l16",
+      "text": "figures have rich and important meanings. Thus,",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        262.96,
+        525.77,
+        273.87
+      ]
+    },
+    {
+      "id": "p1_l17",
+      "text": "and technologies. However, prior efforts in",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        270.01,
+        272.13,
+        279.97
+      ]
+    },
+    {
+      "id": "p1_l18",
+      "text": "text-based machine translation ignoring such im-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        276.51,
+        526.22,
+        287.42
+      ]
+    },
+    {
+      "id": "p1_l19",
+      "text": "translating such documents largely overlooked",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        281.97,
+        272.13,
+        291.93
+      ]
+    },
+    {
+      "id": "p1_l20",
+      "text": "portant information appear insufficient to address",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        290.06,
+        524.41,
+        300.97
+      ]
+    },
+    {
+      "id": "p1_l21",
+      "text": "peS",
+      "rotated": true,
+      "bbox": [
+        16.34,
+        292.62,
+        36.34,
+        322.62
+      ]
+    },
+    {
+      "id": "p1_l22",
+      "text": "the information in layouts. To bridge the",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        293.92,
+        272.13,
+        303.88
+      ]
+    },
+    {
+      "id": "p1_l23",
+      "text": "gap, we introduce PDFMathTranslate, the",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        305.81,
+        272.13,
+        315.84
+      ]
+    },
+    {
+      "id": "p1_l24",
+      "text": "the barrier in scientific and technical document",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        303.61,
+        524.41,
+        314.52
+      ]
+    },
+    {
+      "id": "p1_l25",
+      "text": "world’s first open-source software for trans-",
+      "rotated": false,
+      "bbox": [
+        87.52,
+        317.83,
+        273.78,
+        327.8
+      ]
+    },
+    {
+      "id": "p1_l26",
+      "text": "translation, hindering the progress of science, tech-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        317.16,
+        526.22,
+        328.07
+      ]
+    },
+    {
+      "id": "p1_l27",
+      "text": "22",
+      "rotated": true,
+      "bbox": [
+        16.34,
+        327.62,
+        36.34,
+        347.62
+      ]
+    },
+    {
+      "id": "p1_l28",
+      "text": "lating scientific documents while preserving",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        329.79,
+        272.13,
+        339.75
+      ]
+    },
+    {
+      "id": "p1_l29",
+      "text": "nologies, and society.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        330.71,
+        399.97,
+        341.62
+      ]
+    },
+    {
+      "id": "p1_l30",
+      "text": "layouts. Leveraging the most recent advances",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        341.74,
+        272.12,
+        351.71
+      ]
+    },
+    {
+      "id": "p1_l31",
+      "text": "To fill the gap, we introduce PDFMathTrans-",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        345.38,
+        526.22,
+        356.36
+      ]
+    },
+    {
+      "id": "p1_l32",
+      "text": "in large language models and precise layout",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        353.7,
+        272.13,
+        363.66
+      ]
+    },
+    {
+      "id": "p1_l33",
+      "text": "]LC.sc[",
+      "rotated": true,
+      "bbox": [
+        16.34,
+        357.62,
+        36.34,
+        418.16
+      ]
+    },
+    {
+      "id": "p1_l34",
+      "text": "late, the world’s first open-source tool to trans-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        358.93,
+        526.22,
+        369.91
+      ]
+    },
+    {
+      "id": "p1_l35",
+      "text": "detection, we contribute to the community",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        365.65,
+        272.47,
+        375.62
+      ]
+    },
+    {
+      "id": "p1_l36",
+      "text": "late PDF documents with preserved layouts. By",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        372.55,
+        524.79,
+        383.46
+      ]
+    },
+    {
+      "id": "p1_l37",
+      "text": "with key improvements in precision, flexibil-",
+      "rotated": false,
+      "bbox": [
+        87.52,
+        377.61,
+        273.78,
+        387.57
+      ]
+    },
+    {
+      "id": "p1_l38",
+      "text": "leveraging recent advances in layout detection and",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        386.1,
+        524.41,
+        397.01
+      ]
+    },
+    {
+      "id": "p1_l39",
+      "text": "ity, and efficiency. The work is open-sourced",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        389.56,
+        272.13,
+        399.53
+      ]
+    },
+    {
+      "id": "p1_l40",
+      "text": "at https://github.com/byaidu/pdfmathtranslate",
+      "rotated": false,
+      "bbox": [
+        87.87,
+        401.52,
+        272.13,
+        411.48
+      ]
+    },
+    {
+      "id": "p1_l41",
+      "text": "large language models (see Figure 1), we better",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        399.65,
+        524.59,
+        410.56
+      ]
+    },
+    {
+      "id": "p1_l42",
+      "text": "with more than 222k downloads.",
+      "rotated": false,
+      "bbox": [
+        87.52,
+        413.47,
+        218.16,
+        423.44
+      ]
+    },
+    {
+      "id": "p1_l43",
+      "text": "address the barrier with at least five key contribu-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        413.2,
+        526.22,
+        424.11
+      ]
+    },
+    {
+      "id": "p1_l44",
+      "text": "tions: (1) efficient workflow of layout detection,",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        426.75,
+        525.77,
+        437.66
+      ]
+    },
+    {
+      "id": "p1_l45",
+      "text": "4v90030.7052:viXra",
+      "rotated": true,
+      "bbox": [
+        16.34,
+        428.16,
+        36.34,
+        594.26
+      ]
+    },
+    {
+      "id": "p1_l46",
+      "text": "1 Introduction",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        436.87,
+        153.68,
+        448.82
+      ]
+    },
+    {
+      "id": "p1_l47",
+      "text": "translation, and re-rendering; (2) support for multi-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        440.3,
+        526.23,
+        451.21
+      ]
+    },
+    {
+      "id": "p1_l48",
+      "text": "ple languages; (3) support for multiple translation",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        453.85,
+        524.41,
+        464.76
+      ]
+    },
+    {
+      "id": "p1_l49",
+      "text": "Science and technologies diffuse and develop in",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        459.31,
+        289.14,
+        470.21
+      ]
+    },
+    {
+      "id": "p1_l50",
+      "text": "models and services; (4) diverse user interfaces;",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        467.4,
+        525.32,
+        478.31
+      ]
+    },
+    {
+      "id": "p1_l51",
+      "text": "different languages (Von Gizycki, 1973; Mont-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        472.85,
+        290.94,
+        483.76
+      ]
+    },
+    {
+      "id": "p1_l52",
+      "text": "and (5) a community-commerce model affording",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        480.95,
+        524.41,
+        491.86
+      ]
+    },
+    {
+      "id": "p1_l53",
+      "text": "gomery, 2013).",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        486.4,
+        143.3,
+        497.31
+      ]
+    },
+    {
+      "id": "p1_l54",
+      "text": "Yet, language barriers hin-",
+      "rotated": false,
+      "bbox": [
+        159.28,
+        486.4,
+        290.94,
+        497.31
+      ]
+    },
+    {
+      "id": "p1_l55",
+      "text": "sustainable developments.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        494.5,
+        420.24,
+        505.41
+      ]
+    },
+    {
+      "id": "p1_l56",
+      "text": "der the diffusion and development of scientific",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        499.95,
+        289.14,
+        510.86
+      ]
+    },
+    {
+      "id": "p1_l57",
+      "text": "progress (Ramírez-Castañeda, 2020; Hwang, 2005;",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        513.5,
+        290.04,
+        524.41
+      ]
+    },
+    {
+      "id": "p1_l58",
+      "text": "2 Architecture and Design",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        521.51,
+        448.49,
+        533.46
+      ]
+    },
+    {
+      "id": "p1_l59",
+      "text": "Ammon, 2012). For example, while 98% publica-",
+      "rotated": false,
+      "bbox": [
+        70.47,
+        527.05,
+        290.94,
+        537.96
+      ]
+    },
+    {
+      "id": "p1_l60",
+      "text": "tions in science are written in English (Liu; Am-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        540.6,
+        290.94,
+        551.51
+      ]
+    },
+    {
+      "id": "p1_l61",
+      "text": "PDFMathTranslate is designed to translate doc-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        546.3,
+        526.22,
+        557.21
+      ]
+    },
+    {
+      "id": "p1_l62",
+      "text": "mon, 2012), the language only has 7.3% native",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        554.15,
+        289.14,
+        565.06
+      ]
+    },
+    {
+      "id": "p1_l63",
+      "text": "uments while preserving their original layouts.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        559.85,
+        526.32,
+        570.75
+      ]
+    },
+    {
+      "id": "p1_l64",
+      "text": "speakers and no more than 20% speakers world-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        567.7,
+        290.94,
+        578.61
+      ]
+    },
+    {
+      "id": "p1_l65",
+      "text": "First, it accepts a PDF document along with user-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        573.39,
+        526.22,
+        584.3
+      ]
+    },
+    {
+      "id": "p1_l66",
+      "text": "wide (Bahji et al., 2023). Consequently, the ma-",
+      "rotated": false,
+      "bbox": [
+        70.47,
+        581.25,
+        290.95,
+        592.16
+      ]
+    },
+    {
+      "id": "p1_l67",
+      "text": "specified parameters, such as languages and the",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        586.94,
+        524.41,
+        597.85
+      ]
+    },
+    {
+      "id": "p1_l68",
+      "text": "jority of human beings are hindered by language",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        594.8,
+        289.14,
+        605.71
+      ]
+    },
+    {
+      "id": "p1_l69",
+      "text": "preferred translation service. Next, it detects the",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        600.49,
+        524.41,
+        611.4
+      ]
+    },
+    {
+      "id": "p1_l70",
+      "text": "barriers from the advances in science and technolo-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        608.35,
+        290.95,
+        619.26
+      ]
+    },
+    {
+      "id": "p1_l71",
+      "text": "layouts to extract the layouts and textual contents",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        614.04,
+        524.41,
+        624.95
+      ]
+    },
+    {
+      "id": "p1_l72",
+      "text": "gies. To overcome the barrier, there are the attempts",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        621.9,
+        289.13,
+        632.8
+      ]
+    },
+    {
+      "id": "p1_l73",
+      "text": "from the document. Third, the texts are translated",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        627.59,
+        524.41,
+        638.5
+      ]
+    },
+    {
+      "id": "p1_l74",
+      "text": "from international organizations for inclusive sci-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        635.44,
+        290.94,
+        646.35
+      ]
+    },
+    {
+      "id": "p1_l75",
+      "text": "using the selected translation service, such as GPT-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        641.14,
+        526.22,
+        652.05
+      ]
+    },
+    {
+      "id": "p1_l76",
+      "text": "1",
+      "rotated": false,
+      "bbox": [
+        93.77,
+        647.34,
+        97.76,
+        655.31
+      ]
+    },
+    {
+      "id": "p1_l77",
+      "text": "ence and the attempts from academia in improv-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        648.99,
+        290.94,
+        659.9
+      ]
+    },
+    {
+      "id": "p1_l78",
+      "text": "4, DeepL, Google, or Ollama (see Appendix A).",
+      "rotated": false,
+      "bbox": [
+        305.76,
+        654.69,
+        526.31,
+        665.6
+      ]
+    },
+    {
+      "id": "p1_l79",
+      "text": "ing Machine Translation (MT) over text (Brown",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        662.29,
+        289.14,
+        673.45
+      ]
+    },
+    {
+      "id": "p1_l80",
+      "text": "Finally, the translated text and previously detected",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        668.24,
+        524.41,
+        679.15
+      ]
+    },
+    {
+      "id": "p1_l81",
+      "text": "et al., 1990; Vaswani et al., 2017; Zhu et al., 2020;",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        676.09,
+        290.04,
+        687.0
+      ]
+    },
+    {
+      "id": "p1_l82",
+      "text": "layouts are re-rendered as a translated document",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        681.79,
+        524.41,
+        692.7
+      ]
+    },
+    {
+      "id": "p1_l83",
+      "text": "Johnson et al., 2017; Sennrich et al., 2016).",
+      "rotated": false,
+      "bbox": [
+        70.66,
+        689.64,
+        259.74,
+        700.55
+      ]
+    },
+    {
+      "id": "p1_l84",
+      "text": "with preserved layouts.",
+      "rotated": false,
+      "bbox": [
+        305.75,
+        695.34,
+        407.08,
+        706.25
+      ]
+    },
+    {
+      "id": "p1_l85",
+      "text": "However, text-based machine translation fails to",
+      "rotated": false,
+      "bbox": [
+        81.78,
+        703.44,
+        289.14,
+        714.35
+      ]
+    },
+    {
+      "id": "p1_l86",
+      "text": "Technically, we design the architecture for pre-",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        709.83,
+        526.22,
+        720.99
+      ]
+    },
+    {
+      "id": "p1_l87",
+      "text": "address the unique challenges posed by the layouts",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        716.99,
+        289.13,
+        727.9
+      ]
+    },
+    {
+      "id": "p1_l88",
+      "text": "cision, flexibility, and efficiency. These three prin-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        723.38,
+        526.22,
+        734.54
+      ]
+    },
+    {
+      "id": "p1_l89",
+      "text": "in technical translation (Schubert, 2012) where the",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        730.29,
+        289.13,
+        741.45
+      ]
+    },
+    {
+      "id": "p1_l90",
+      "text": "ciples are realized by a precise parser, a flexible",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        737.18,
+        524.41,
+        748.09
+      ]
+    },
+    {
+      "id": "p1_l91",
+      "text": "elaborate access structure matters (pp. 351-352).",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        743.84,
+        291.04,
+        755.0
+      ]
+    },
+    {
+      "id": "p1_l92",
+      "text": "translation middle-ware, and an efficient workflow,",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        750.73,
+        525.77,
+        761.64
+      ]
+    },
+    {
+      "id": "p1_l93",
+      "text": "1See https://www.unesco.org/en/open-science",
+      "rotated": false,
+      "bbox": [
+        83.52,
+        764.34,
+        273.05,
+        774.77
+      ]
+    },
+    {
+      "id": "p1_l94",
+      "text": "detailed in following subsections.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        764.28,
+        452.53,
+        775.19
+      ]
+    }
+  ],
+  "visual_bounds": [],
+  "preview": "/workspace/.dsh/pdf-jobs/c752fe3e69944ae49692f48fd2207a9a/d70875bef2eb487e957d92d15f2e9711/source-1.png",
+  "table_candidates": [],
+  "columns": 2
+}

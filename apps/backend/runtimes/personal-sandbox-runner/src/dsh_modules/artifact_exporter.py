@@ -393,7 +393,8 @@ class ArtifactExporter:
         turn_start_time: float = None,
         session_files: Optional[List[str]] = None,
         expected_deliverables: Optional[List[str]] = None,
-        prompt: Optional[str] = None
+        prompt: Optional[str] = None,
+        *, is_inspect_intent: bool = False, is_generate_intent: bool = False,
     ) -> List[dict]:
         """
         Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, md, zip, etc.)
@@ -402,6 +403,9 @@ class ArtifactExporter:
         """
         deliverables = []
         seen_names = set()
+
+        if is_inspect_intent and not is_generate_intent:
+            return deliverables
 
         from .skill_router import is_text_only_request, is_term_negated
         if prompt and is_text_only_request(prompt):
@@ -431,10 +435,8 @@ class ArtifactExporter:
             return deliverables
 
         # 若期望 PDF 且工作区尚无有效 PDF，尝试从当前生成的 Markdown 自动编译为 PDF
-        if (
-            (expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables))
-            or (prompt and ("pdf" in prompt.lower() or re.search(r"(?:生成|导出|制作|做成|转为|转成)[^，。\n]{0,8}pdf", prompt, re.I)))
-        ):
+        from .pdf_output_contract import requests_pdf_output
+        if requests_pdf_output(prompt, expected_deliverables):
             try:
                 from .deliverable_contract import materialize_pdf_from_markdown
                 auto_pdf = materialize_pdf_from_markdown(

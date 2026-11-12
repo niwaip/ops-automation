@@ -1,0 +1,1018 @@
+{
+  "id": "p3",
+  "number": 3,
+  "width_pt": 595.276,
+  "height_pt": 841.89,
+  "rotation": 0,
+  "lines": [
+    {
+      "id": "p3_l1",
+      "text": "CLI",
+      "rotated": false,
+      "bbox": [
+        442.55,
+        72.73,
+        456.2,
+        80.17
+      ]
+    },
+    {
+      "id": "p3_l2",
+      "text": "et al., 2024; Shanahan et al., 2023), etc.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        73.27,
+        243.26,
+        84.18
+      ]
+    },
+    {
+      "id": "p3_l3",
+      "text": "WEB",
+      "rotated": false,
+      "bbox": [
+        459.3,
+        91.95,
+        477.9,
+        99.39
+      ]
+    },
+    {
+      "id": "p3_l4",
+      "text": "2.3 Efficient streaming flow",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        102.25,
+        206.01,
+        113.16
+      ]
+    },
+    {
+      "id": "p3_l5",
+      "text": "WIN",
+      "rotated": false,
+      "bbox": [
+        483.07,
+        111.17,
+        499.61,
+        118.61
+      ]
+    },
+    {
+      "id": "p3_l6",
+      "text": "Translating scientific and technical documents of-",
+      "rotated": false,
+      "bbox": [
+        70.53,
+        123.62,
+        290.94,
+        134.53
+      ]
+    },
+    {
+      "id": "p3_l7",
+      "text": "MAC",
+      "rotated": false,
+      "bbox": [
+        502.7,
+        130.39,
+        521.3,
+        137.84
+      ]
+    },
+    {
+      "id": "p3_l8",
+      "text": "ten necessitates an efficient workflow, especially",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        137.17,
+        289.52,
+        148.08
+      ]
+    },
+    {
+      "id": "p3_l9",
+      "text": "when dealing with thousands of pages, which",
+      "rotated": false,
+      "bbox": [
+        70.47,
+        150.72,
+        289.14,
+        161.63
+      ]
+    },
+    {
+      "id": "p3_l10",
+      "text": "can challenge overall performance. To address",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        164.27,
+        289.14,
+        175.18
+      ]
+    },
+    {
+      "id": "p3_l11",
+      "text": "the issue, we landed on a streaming design that",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        177.82,
+        289.14,
+        188.73
+      ]
+    },
+    {
+      "id": "p3_l12",
+      "text": "is centered around an efficient in-memory pro-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        191.37,
+        290.94,
+        202.28
+      ]
+    },
+    {
+      "id": "p3_l13",
+      "text": "cessing pipeline that minimizes disk I/O while",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        204.92,
+        289.14,
+        215.83
+      ]
+    },
+    {
+      "id": "p3_l14",
+      "text": "preserving document fidelity. Specifically, the",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        218.47,
+        289.14,
+        229.37
+      ]
+    },
+    {
+      "id": "p3_l15",
+      "text": "translate_stream function accepts a byte stream",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        231.56,
+        289.13,
+        242.92
+      ]
+    },
+    {
+      "id": "p3_l16",
+      "text": "Figure 2: Officially supported interfaces",
+      "rotated": false,
+      "bbox": [
+        335.19,
+        235.79,
+        495.37,
+        245.75
+      ]
+    },
+    {
+      "id": "p3_l17",
+      "text": "of a PDF file and transforms it into a muta-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        245.56,
+        290.94,
+        256.47
+      ]
+    },
+    {
+      "id": "p3_l18",
+      "text": "ble document representation. This approach al-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        259.11,
+        290.94,
+        270.02
+      ]
+    },
+    {
+      "id": "p3_l19",
+      "text": "lows the system to dynamically apply modifi-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        272.66,
+        290.94,
+        283.57
+      ]
+    },
+    {
+      "id": "p3_l20",
+      "text": "cations, such as converting to PDF/A format",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        286.21,
+        289.14,
+        297.12
+      ]
+    },
+    {
+      "id": "p3_l21",
+      "text": "when needed and embedding the appropriate fonts",
+      "rotated": false,
+      "bbox": [
+        70.47,
+        299.76,
+        289.14,
+        310.67
+      ]
+    },
+    {
+      "id": "p3_l22",
+      "text": "Figure 3: Major commands for CLI",
+      "rotated": false,
+      "bbox": [
+        344.28,
+        305.76,
+        486.27,
+        315.72
+      ]
+    },
+    {
+      "id": "p3_l23",
+      "text": "based on the target language. By employing",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        313.31,
+        289.14,
+        324.22
+      ]
+    },
+    {
+      "id": "p3_l24",
+      "text": "temporary buffers and leveraging functions like",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        326.86,
+        289.14,
+        337.77
+      ]
+    },
+    {
+      "id": "p3_l25",
+      "text": "download_remote_fonts, the design effectively",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        339.95,
+        289.52,
+        351.32
+      ]
+    },
+    {
+      "id": "p3_l26",
+      "text": "3 Usage and Deployments",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        338.79,
+        446.28,
+        350.75
+      ]
+    },
+    {
+      "id": "p3_l27",
+      "text": "manages resources and ensures that the original file",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        353.96,
+        289.13,
+        364.87
+      ]
+    },
+    {
+      "id": "p3_l28",
+      "text": "PDFMathTranslate has been implemented in var-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        360.87,
+        526.22,
+        371.78
+      ]
+    },
+    {
+      "id": "p3_l29",
+      "text": "remains unaltered during processing.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        367.51,
+        232.05,
+        378.42
+      ]
+    },
+    {
+      "id": "p3_l30",
+      "text": "ious interfaces, including a command-line tool",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        374.42,
+        524.41,
+        385.33
+      ]
+    },
+    {
+      "id": "p3_l31",
+      "text": "Our workflow supports various translation back-",
+      "rotated": false,
+      "bbox": [
+        81.78,
+        382.98,
+        290.95,
+        393.89
+      ]
+    },
+    {
+      "id": "p3_l32",
+      "text": "(CLI), a graphic user interface (GUI), cross-",
+      "rotated": false,
+      "bbox": [
+        305.78,
+        387.97,
+        526.22,
+        398.88
+      ]
+    },
+    {
+      "id": "p3_l33",
+      "text": "ends, with translators configured as plugins within",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        396.53,
+        289.13,
+        407.44
+      ]
+    },
+    {
+      "id": "p3_l34",
+      "text": "platform applications (on MacOS and Windows),",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        401.52,
+        525.77,
+        412.43
+      ]
+    },
+    {
+      "id": "p3_l35",
+      "text": "our workflow. Different translators integrate dis-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        410.08,
+        290.94,
+        420.99
+      ]
+    },
+    {
+      "id": "p3_l36",
+      "text": "and Docker images. In addition to those offi-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        415.07,
+        526.22,
+        425.98
+      ]
+    },
+    {
+      "id": "p3_l37",
+      "text": "tinct translation functionalities by inheriting from",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        423.63,
+        289.13,
+        434.54
+      ]
+    },
+    {
+      "id": "p3_l38",
+      "text": "cially supported interfaces, user guaguastandup",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        428.16,
+        524.41,
+        439.53
+      ]
+    },
+    {
+      "id": "p3_l39",
+      "text": "a base class and implementing the do_translate",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        436.72,
+        289.13,
+        448.09
+      ]
+    },
+    {
+      "id": "p3_l40",
+      "text": "contributes a Zotero plugin to our community.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        442.17,
+        507.33,
+        453.08
+      ]
+    },
+    {
+      "id": "p3_l41",
+      "text": "method. These translators can be seamlessly inte-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        450.73,
+        290.95,
+        461.63
+      ]
+    },
+    {
+      "id": "p3_l42",
+      "text": "For laymen, we offer GUI on Mac 4, Windows,",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        454.17,
+        525.77,
+        466.73
+      ]
+    },
+    {
+      "id": "p3_l43",
+      "text": "grated into different user interfaces. With contribu-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        464.28,
+        290.94,
+        475.18
+      ]
+    },
+    {
+      "id": "p3_l44",
+      "text": "Web, online demos, and Zotero plugin 5. Specifi-",
+      "rotated": false,
+      "bbox": [
+        305.63,
+        467.72,
+        526.22,
+        480.28
+      ]
+    },
+    {
+      "id": "p3_l45",
+      "text": "tions from the community, our workflow currently",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        477.82,
+        289.51,
+        488.73
+      ]
+    },
+    {
+      "id": "p3_l46",
+      "text": "cally, desktop versions on Mac and Windows can",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        482.92,
+        524.41,
+        493.83
+      ]
+    },
+    {
+      "id": "p3_l47",
+      "text": "supports more than 20 translators. Additionally,",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        491.37,
+        290.5,
+        502.28
+      ]
+    },
+    {
+      "id": "p3_l48",
+      "text": "be installed, demos are publicly accessible online,",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        496.47,
+        525.77,
+        507.38
+      ]
+    },
+    {
+      "id": "p3_l49",
+      "text": "it provides robust extensibility for backend LLM",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        504.92,
+        289.14,
+        515.83
+      ]
+    },
+    {
+      "id": "p3_l50",
+      "text": "and GUI can be started using pdf2zh -i. Those",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        509.56,
+        524.41,
+        520.93
+      ]
+    },
+    {
+      "id": "p3_l51",
+      "text": "services with the OpenAI-compatible API and tra-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        518.47,
+        290.95,
+        529.38
+      ]
+    },
+    {
+      "id": "p3_l52",
+      "text": "graphic interfaces are shown in Figure 2.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        523.57,
+        484.2,
+        534.48
+      ]
+    },
+    {
+      "id": "p3_l53",
+      "text": "ditional machine translation service.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        532.02,
+        229.03,
+        542.93
+      ]
+    },
+    {
+      "id": "p3_l54",
+      "text": "For developers, we support CLI and Docker for",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        537.22,
+        524.6,
+        548.13
+      ]
+    },
+    {
+      "id": "p3_l55",
+      "text": "Further optimization in performance is achieved",
+      "rotated": false,
+      "bbox": [
+        81.78,
+        547.49,
+        289.14,
+        558.4
+      ]
+    },
+    {
+      "id": "p3_l56",
+      "text": "advanced usage and substream developments. De-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        550.77,
+        526.22,
+        561.68
+      ]
+    },
+    {
+      "id": "p3_l57",
+      "text": "through a combination of asynchronous execution,",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        561.04,
+        290.49,
+        571.95
+      ]
+    },
+    {
+      "id": "p3_l58",
+      "text": "velopers who prefer command-line tools can con-",
+      "rotated": false,
+      "bbox": [
+        305.87,
+        564.32,
+        526.22,
+        575.23
+      ]
+    },
+    {
+      "id": "p3_l59",
+      "text": "caching strategies, and error-handling mechanisms.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        574.59,
+        291.04,
+        585.5
+      ]
+    },
+    {
+      "id": "p3_l60",
+      "text": "veniently install our Python CLI program using",
+      "rotated": false,
+      "bbox": [
+        305.87,
+        577.87,
+        524.41,
+        588.78
+      ]
+    },
+    {
+      "id": "p3_l61",
+      "text": "Asynchronous constructs, such as asyncio.Event,",
+      "rotated": false,
+      "bbox": [
+        70.47,
+        587.68,
+        290.5,
+        599.05
+      ]
+    },
+    {
+      "id": "p3_l62",
+      "text": "pip install pdf2zh. The command-line tool",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        590.96,
+        524.41,
+        602.33
+      ]
+    },
+    {
+      "id": "p3_l63",
+      "text": "are employed to support task cancellation and con-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        601.69,
+        290.94,
+        612.6
+      ]
+    },
+    {
+      "id": "p3_l64",
+      "text": "supports extensive features, with the major options",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        604.97,
+        524.41,
+        615.88
+      ]
+    },
+    {
+      "id": "p3_l65",
+      "text": "currency, particularly when processing large doc-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        615.24,
+        290.94,
+        626.15
+      ]
+    },
+    {
+      "id": "p3_l66",
+      "text": "shown in Figure 3 and more documented in de-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        618.52,
+        526.22,
+        629.43
+      ]
+    },
+    {
+      "id": "p3_l67",
+      "text": "uments or handling multiple translation tasks si-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        628.79,
+        290.94,
+        639.7
+      ]
+    },
+    {
+      "id": "p3_l68",
+      "text": "tails 6. For users who want to deploy the software",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        630.41,
+        524.41,
+        642.98
+      ]
+    },
+    {
+      "id": "p3_l69",
+      "text": "multaneously. In addition, the design incorpo-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        642.34,
+        290.94,
+        653.25
+      ]
+    },
+    {
+      "id": "p3_l70",
+      "text": "on servers, we offer a Docker image for simplified",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        645.62,
+        524.41,
+        656.53
+      ]
+    },
+    {
+      "id": "p3_l71",
+      "text": "rates a caching mechanism—controlled via the",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        655.89,
+        289.14,
+        666.8
+      ]
+    },
+    {
+      "id": "p3_l72",
+      "text": "deployment. Additionally, Docker images are built",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        659.17,
+        524.41,
+        670.08
+      ]
+    },
+    {
+      "id": "p3_l73",
+      "text": "ignore_cache flag—to prevent redundant com-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        668.98,
+        290.95,
+        680.35
+      ]
+    },
+    {
+      "id": "p3_l74",
+      "text": "and distributed on different platforms for develop-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        672.72,
+        526.22,
+        683.62
+      ]
+    },
+    {
+      "id": "p3_l75",
+      "text": "putations, save LLM tokens, and accelerate the",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        682.99,
+        289.14,
+        693.9
+      ]
+    },
+    {
+      "id": "p3_l76",
+      "text": "ers with potential network issues.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        686.26,
+        451.78,
+        697.17
+      ]
+    },
+    {
+      "id": "p3_l77",
+      "text": "translation process. While a subset font embed-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        696.54,
+        290.94,
+        707.44
+      ]
+    },
+    {
+      "id": "p3_l78",
+      "text": "docker pull byaidu / pdf2zh",
+      "rotated": false,
+      "bbox": [
+        317.67,
+        703.56,
+        450.63,
+        712.53
+      ]
+    },
+    {
+      "id": "p3_l79",
+      "text": "ding strategy minimizes the final file size without",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        710.09,
+        289.13,
+        720.99
+      ]
+    },
+    {
+      "id": "p3_l80",
+      "text": "compromising compatibility. Overall, this stream-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        723.63,
+        290.95,
+        734.54
+      ]
+    },
+    {
+      "id": "p3_l81",
+      "text": "4See https://github.com/reycn/pdf2zh-mac.",
+      "rotated": false,
+      "bbox": [
+        318.79,
+        722.71,
+        472.46,
+        733.14
+      ]
+    },
+    {
+      "id": "p3_l82",
+      "text": "5See https://github.com/guaguastandup/zotero-pdf2zh;",
+      "rotated": false,
+      "bbox": [
+        318.79,
+        733.56,
+        525.15,
+        743.99
+      ]
+    },
+    {
+      "id": "p3_l83",
+      "text": "ing design reflects a robust, scalable, and resource-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        737.18,
+        290.94,
+        748.09
+      ]
+    },
+    {
+      "id": "p3_l84",
+      "text": "community-contributed.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        744.99,
+        392.88,
+        753.96
+      ]
+    },
+    {
+      "id": "p3_l85",
+      "text": "efficient framework tailored for automated PDF",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        750.73,
+        289.44,
+        761.64
+      ]
+    },
+    {
+      "id": "p3_l86",
+      "text": "6See https://github.com/Byaidu/PDFMathTranslate/blob",
+      "rotated": false,
+      "bbox": [
+        318.79,
+        754.38,
+        520.38,
+        764.81
+      ]
+    },
+    {
+      "id": "p3_l87",
+      "text": "translation workflows.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        764.28,
+        168.06,
+        775.19
+      ]
+    },
+    {
+      "id": "p3_l88",
+      "text": "/main/docs/ADVANCED.md",
+      "rotated": false,
+      "bbox": [
+        305.89,
+        765.8,
+        410.17,
+        774.77
+      ]
+    }
+  ],
+  "visual_bounds": [
+    [
+      306.142,
+      70.84595671042007,
+      435.74081,
+      167.6192632895801
+    ],
+    [
+      326.20910144354997,
+      90.08838000000003,
+      459.0800178578,
+      186.82242000000008
+    ],
+    [
+      345.38111413371996,
+      109.31116999999995,
+      483.3142946261,
+      206.04521
+    ],
+    [
+      370.96924456064,
+      128.53395999999998,
+      501.13246171881997,
+      225.26800000000003
+    ],
+    [
+      306.142,
+      259.35119999999995,
+      524.4123999999999,
+      295.23799999999994
+    ]
+  ],
+  "preview": "/workspace/.dsh/pdf-jobs/73e64a85f62e42d68bd48ea6efe874a4/8fcb9d86747a45c2913f4f56869c54c8/source-3.png",
+  "table_candidates": [
+    [
+      308.126288,
+      73.00348440523693,
+      524.41368,
+      204.06092199999998
+    ]
+  ]
+}

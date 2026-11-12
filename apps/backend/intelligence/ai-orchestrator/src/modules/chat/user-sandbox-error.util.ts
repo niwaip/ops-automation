@@ -18,12 +18,12 @@ export const isArtifactRegenerationRequest = (
 };
 
 export const isLiveSearchRequest = (message: string): boolean =>
-  /(?:联网|搜索|搜一下|查一下|查询|查看|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|动态|插件|安装方法|安装教程|如何安装|怎么安装|安装指南|installation guide|how to install|releases?|天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云)/i.test(
+  /(?:联网|搜索|搜一下|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|天气|气象|气温|下雨|降雨|暴雨|预报|\bweb\s*search\b)/i.test(
     String(message || '')
   );
 
 export const isTransientSandboxModelFailure = (message: string): boolean =>
-  /(?:sandbox model execution error|\baborted\b|timeout|timed out|超时|socket hang up|econnreset)/i.test(
+  /(?:sandbox model execution error|\baborted\b|\bterminated\b|fetch failed|und_err_body_timeout|premature close|timeout|timed out|超时|socket hang up|econnreset|epipe)/i.test(
     String(message || '')
   );
 
@@ -74,7 +74,7 @@ export function extractSandboxExecutionDetail(errMsg: string): string {
   const allMatches = Array.from(errMsg.matchAll(/(?:^|\n|\b)执行异常:\s*([^\n\r]+)/g));
   if (allMatches.length > 0) {
     for (let i = allMatches.length - 1; i >= 0; i--) {
-      const candidate = allMatches[i][1]?.trim();
+      const candidate = allMatches[i]?.[1]?.trim();
       if (
         candidate &&
         !candidate.includes('provenance') &&
@@ -85,7 +85,7 @@ export function extractSandboxExecutionDetail(errMsg: string): string {
         return candidate;
       }
     }
-    return allMatches[allMatches.length - 1][1]?.trim() || errMsg;
+    return allMatches[allMatches.length - 1]?.[1]?.trim() || errMsg;
   }
 
   return errMsg;
@@ -103,6 +103,12 @@ export function classifyPersonalSandboxError(options: {
   sessionAttachedFiles: string[];
 }): ClassifiedSandboxError | null {
   const { message, errMsg, errStatus, recentHistory, sessionAttachedFiles } = options;
+  const timeoutTrace = {
+    executed: /(?:Harness Tool Call|DeepSeek Harness|DSH_PROGRESS)/.test(errMsg),
+    errorType: 'MODEL_OR_TOOL_TIMEOUT',
+    stage: errMsg.includes('vision_inspect') ? 'visual_reading' : 'model_execution',
+    rawError: errMsg,
+  };
 
   // 判断是否为排队/并发超时
   const isConcurrencyConflict =
@@ -131,25 +137,42 @@ export function classifyPersonalSandboxError(options: {
   ) {
     return {
       friendlyError:
-        '⏱️ 模型在执行文件写入前响应超时或连接中断，本次未生成可用文件。深度思考已关闭，可安全重试本次生成。',
+        '⏱️ 模型处理文件任务时响应超时或连接中断，本轮未完成。请重试；已有文件需核验后才能确认是否可用。',
       eventData: {
         code: 'SANDBOX_GENERATION_TIMEOUT',
         retryable: true,
-        artifactCreated: false,
       },
+      executionTrace: timeoutTrace,
     };
   }
 
-  // 2. 联网检索结果整理超时
+  // 附件读取阶段优先于请求中的搜索关键词，不能把本地查看误报成检索完成。
+  if (sessionAttachedFiles.length > 0 && isTransientSandboxModelFailure(errMsg)) {
+    const reading = /(?:查看|阅读|归纳|总结|分析|提取|审阅|内容)/.test(message)
+      && !/(?:翻译|导出|生成|制作|创建)/.test(message);
+    return {
+      friendlyError: timeoutTrace.stage === 'visual_reading'
+        ? '⏱️ 附件图像识别阶段响应超时或连接中断，内容归纳尚未完成。请重试；本次未确认全文读取完成。'
+        : '⏱️ 附件处理过程中模型响应超时或连接中断，本轮尚未完成。请重试；系统未确认已读取全文或建立可自动续跑的检查点。',
+      eventData: {
+        code: reading ? 'SANDBOX_DOCUMENT_ANALYSIS_TIMEOUT' : 'SANDBOX_GENERATION_TIMEOUT',
+        retryable: true,
+        stage: timeoutTrace.stage,
+      },
+      executionTrace: timeoutTrace,
+    };
+  }
+
+  // 2. 搜索意图不等于检索成功；没有执行回执时不声明 searchCompleted。
   if (isLiveSearchRequest(message) && isTransientSandboxModelFailure(errMsg)) {
     return {
       friendlyError:
-        '⏱️ 联网检索已经完成，但指定模型在整理检索结果（或气象数据）时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。',
+        '⏱️ 联网查询处理过程中模型响应超时或连接中断，本轮未完成回答。请重试；系统不会在缺少可核验资料时补写结论。',
       eventData: {
         code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
         retryable: true,
-        searchCompleted: true,
       },
+      executionTrace: timeoutTrace,
     };
   }
 
@@ -167,12 +190,12 @@ export function classifyPersonalSandboxError(options: {
   if (isIncrementalArtifactTask && isTransientSandboxModelFailure(errMsg)) {
     return {
       friendlyError:
-        '⏱️ 模型在分析或生成交付物时响应超时（上游网络连接中断）。当前工作区文件安全保留，您可以直接点击下方重试继续执行。',
+        '⏱️ 任务执行过程中模型响应超时或连接中断，本轮未完成。请重试；已有文件和恢复进度需经核验，不能确认可自动断点续跑。',
       eventData: {
         code: 'SANDBOX_GENERATION_TIMEOUT',
         retryable: true,
-        artifactCreated: false,
       },
+      executionTrace: timeoutTrace,
     };
   }
 

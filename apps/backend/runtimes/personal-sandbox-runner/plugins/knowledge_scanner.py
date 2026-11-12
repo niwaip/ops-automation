@@ -1,30 +1,23 @@
 #!/usr/bin/env python3
-"""
-DeepSeek Harness Plugin: Knowledge Space Scanner
-Certified Administrator Plugin for Personal Sandbox
-"""
-import os
-import sys
+"""Compatibility entry point for the canonical personal-workspace knowledge client."""
+import argparse
 import json
+import sys
 from pathlib import Path
 
-def scan_knowledge(knowledge_dir="/knowledge"):
-    p = Path(knowledge_dir)
-    if not p.exists():
-        return {"total": 0, "files": []}
-    files = []
-    for item in p.glob("**/*"):
-        if item.is_file() and not item.name.startswith("."):
-            # 严格过滤 skills 目录及其定义脚本
-            if "skills" in item.relative_to(p).parts:
-                continue
-            files.append({
-                "name": item.name,
-                "path": str(item.relative_to(p)),
-                "size_bytes": item.stat().st_size
-            })
-    return {"total": len(files), "files": files}
+sys.path.insert(0, '/usr/local/bin')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+from dsh_modules.personal_knowledge_search import scan_personal_knowledge, get_last_scanned_knowledge_files
 
-if __name__ == "__main__":
-    k_dir = sys.argv[1] if len(sys.argv) > 1 else "/knowledge"
-    print(json.dumps(scan_knowledge(k_dir), ensure_ascii=False, indent=2))
+
+def scan_knowledge(query=''):
+    context = scan_personal_knowledge(prompt=query)
+    files = get_last_scanned_knowledge_files()
+    return {'source': 'personal_workspace', 'total': len(files), 'files': files, 'context': context}
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Read personal workspace originals; local directories are not knowledge sources.')
+    parser.add_argument('--query', default='')
+    args = parser.parse_args()
+    print(json.dumps(scan_knowledge(args.query), ensure_ascii=False, indent=2))

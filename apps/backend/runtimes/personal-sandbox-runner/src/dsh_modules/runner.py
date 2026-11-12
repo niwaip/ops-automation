@@ -21,7 +21,7 @@ from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
 from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
-from .llm import ModelRepetitionLoopError
+from .model_failures import ModelStreamError, model_failure_text
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .pdf_workflow import is_template_pdf_task, PDF_EXECUTION_INSTRUCTION
@@ -45,10 +45,9 @@ def _verify_and_restore_input_attachments(
         if not backup_p.exists():
             continue
         try:
-            import hashlib
             import shutil
-            cur_bytes = fpath.read_bytes() if fpath.exists() else b""
-            cur_h = hashlib.sha256(cur_bytes).hexdigest() if fpath.exists() else ""
+            from .pdf_text_cache import sha256_file_chunked
+            cur_h = sha256_file_chunked(fpath) if fpath.exists() else ""
             if cur_h != orig_h:
                 shutil.copy2(backup_p, fpath)
                 print(f"🛡️ [Harness Input Protection] 输入附件 ({fname}) 被工具或脚本篡改，已自动从只读备份恢复原件！", flush=True)
@@ -174,6 +173,9 @@ def cmd_run(args):
         print("Error: query prompt is required.", file=sys.stderr)
         sys.exit(1)
 
+    from .visual_reading_policy import user_request, reading_guidance
+    os.environ['DSH_USER_REQUEST'] = user_request(prompt)
+
     print_banner()
     overall_start_time = time.time()
     policy = RuntimePolicy.from_env()
@@ -192,29 +194,52 @@ def cmd_run(args):
 
     task_deadline = time.monotonic() + policy.total_task_timeout if policy.total_task_timeout > 0 else None
     session_id = getattr(args, "session_id", None)
+    if session_id:
+        os.environ['DSH_SESSION_ID'] = str(session_id)
+    else:
+        os.environ.pop('DSH_SESSION_ID', None)
     history_file, existing_history = load_session_history(session_id)
+
+    telemetry = TelemetryStats()
+    telemetry.bind_journal(history_file)
+    telemetry.record_guard('session_context', 'loaded',
+                           {'session_id': session_id, 'history_items': len(existing_history)})
 
     # 1. 意图与技能解析 (精确规则 + Slash 命令)
     allow_research = bool(getattr(args, "research", False))
     session_files = resolve_session_attachments(args, session_id)
     from .preflight_probe import probe_session_attachments
-    attachment_probe = probe_session_attachments(session_files, prompt=prompt)
+    t_probe0 = time.monotonic()
+    attachment_probe = probe_session_attachments(session_files, prompt=prompt, workspace_dir=WORKSPACE_DIR)
+    if session_files:
+        telemetry.checkpoint('preflight_probe', {
+            'duration_ms': round((time.monotonic() - t_probe0) * 1000, 2),
+            'files': len(session_files),
+        })
     if attachment_probe.get("primary_domain") == "finance_fpna":
         os.environ["DSH_PROBED_DOMAIN"] = "finance"
     elif attachment_probe.get("primary_domain") == "timesheet_wbs":
         os.environ["DSH_PROBED_DOMAIN"] = "timesheet"
     else:
         os.environ.pop("DSH_PROBED_DOMAIN", None)
-
-    telemetry = TelemetryStats()
-    telemetry.bind_journal(history_file)
     if attachment_probe.get("summary"):
         telemetry.record_guard("preflight_probe", "inspected", attachment_probe["summary"])
 
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
                                   load_skill_context=False)
+    from .mcp_objective import record_mcp_route
+    record_mcp_route(prompt, skill_res, telemetry)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
-    from .docx_workflow import is_template_docx_task, DOCX_EXECUTION_INSTRUCTION
+    from .docx_workflow import (
+        is_template_docx_task,
+        is_docx_in_place_transform_task,
+        DOCX_EXECUTION_INSTRUCTION,
+        DOCX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
+    from .xlsx_workflow import (
+        is_xlsx_in_place_transform_task,
+        XLSX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
     template_candidate = skill_res if not session_files and (is_template_pdf_task(prompt, skill_res) or is_template_docx_task(prompt, skill_res)) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
@@ -230,6 +255,21 @@ def cmd_run(args):
     except ValueError as error:
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
+    from .pdf_translation_workflow import fixed_translation, attachment_metadata
+    from .pdf_translation_routing import normalize_pdf_translation_route
+    from .pptx_workflow import (
+        normalize_pptx_translation_route,
+        fixed_pptx_translation,
+        is_pptx_in_place_transform_task,
+        PPTX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
+    skill_res = normalize_pdf_translation_route(prompt, session_files, skill_res, telemetry)
+    skill_res = normalize_pptx_translation_route(prompt, session_files, skill_res, telemetry)
+    fixed_pdf_translation = fixed_translation(prompt, session_files, skill_res.deliverables)
+    fixed_pptx = fixed_pptx_translation(prompt, session_files, skill_res.deliverables)
+    if fixed_pdf_translation or fixed_pptx:
+        # The runtime owns the translation path; do not inject the full skill body.
+        skill_res.skill_context = ''
     template_pdf = is_template_pdf_task(prompt, skill_res)
     if template_pdf:
         # The managed renderer replaces CLI/code examples; do not let examples
@@ -240,79 +280,36 @@ def cmd_run(args):
     if template_docx:
         skill_res.skill_context = DOCX_EXECUTION_INSTRUCTION
         telemetry.record_guard('docx_template', 'direct_execution', 'owned_renderer')
+    elif is_docx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = DOCX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('docx_in_place', 'direct_execution', 'ooxml_docx_translate')
+    elif is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = XLSX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('xlsx_in_place', 'direct_execution', 'ooxml_xlsx_translate')
+    elif not fixed_pptx and is_pptx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = PPTX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('pptx_in_place', 'direct_execution', 'ooxml_pptx_translate')
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
                                  model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy,
                                  present=True, telemetry=telemetry):
         return
-    # 扫描个人知识库与产出成果库：
-    # 1. 若用户有显式知识库意图（is_knowledge_intent），执行全量扫描
-    # 2. 否则进行轻量关键词/tag自动探测，若命中成果库/知识库中的特定标签、文件名或高权内容，自动引入！
-    knowledge_context = ""
-    if skill_res.is_knowledge_intent:
-        knowledge_context = scan_personal_knowledge(prompt=prompt)
-    else:
-        auto_knowledge = scan_personal_knowledge(prompt=prompt, auto_match_only=True)
-        if auto_knowledge:
-            knowledge_context = auto_knowledge
-            skill_res.is_knowledge_intent = True
-
-
-    # 2. 联网前置检索
-    # args.web_search 仅表示沙箱具备联网检索工具能力，绝不能将所有普通对话/生成需求直接断定为纯检索任务！
-    # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
-    forbidden_network = is_network_search_forbidden(prompt)
-    has_web_search_permission = bool(args.web_search) and not forbidden_network
-    is_weather_intent = is_weather_inquiry(prompt, skill_res) and not forbidden_network and not template_pdf
-    is_search_intent = (
-        not forbidden_network
-        and (
-            prompt.strip().startswith("/search ")
-            or skill_res.is_search_intent
-            or is_weather_intent
-        )
-    )
-    # 严格遵循外部检索谨慎性原则：
-    # 物理文档/报表生成任务（如制作 word/excel/ppt/markdown）在未显式要求检索时，绝不执行前置盲搜！
-    # 避免将包含业务规范、表格列名的整段长需求投递给搜索引擎。
-    is_doc_task_without_search_cue = (
-        (skill_res.is_generate_intent or (skill_res.skill_id in {"docx", "xlsx", "pdf", "pptx", "html-ppt", "guizang-ppt"}))
-        and not prompt.strip().startswith("/search ")
-        and not is_weather_intent
-        and not any(k in prompt for k in ["联网", "搜索", "全网查询", "最新动态", "实时数据"])
-    )
-    if is_doc_task_without_search_cue:
-        is_search_intent = False
-    search_context = ""
-    if is_search_intent and has_web_search_permission:
-        if task_deadline is not None and time.monotonic() >= task_deadline:
-            raise TimeoutError("Task total execution deadline exceeded before pre-search")
-        search_prompt = SkillRouter.resolve_contextual_query(prompt, existing_history)
-        if search_prompt != prompt:
-            print(f"🔍 [Harness Web Search] 正在检索实时数据: '{search_prompt}' (根据上下文消歧指代: '{prompt}')...", flush=True)
-        else:
-            print(f"🔍 [Harness Web Search] 正在检索实时数据: '{prompt}'...", flush=True)
-        search_context = perform_multi_web_search(search_prompt, deadline=task_deadline)
-        if task_deadline is not None and time.monotonic() >= task_deadline:
-            raise TimeoutError("Task total execution deadline exceeded during pre-search")
-        if search_context:
-            print("✓ 实时数据检索成功，已注入分析上下文。", flush=True)
-            # 若检索到包含高价值外部页面，抓取页面正文以提供真实事实依据
-            page_deadline = min(task_deadline, time.monotonic() + 5.0) if task_deadline is not None else (time.monotonic() + 5.0)
-            original_search_context = search_context
-            try:
-                enriched = enrich_search_context_with_pages(
-                    search_context,
-                    max_pages=2,
-                    max_chars_per_page=2_500,
-                    deadline=page_deadline,
-                )
-                if enriched and enriched != original_search_context:
-                    search_context = enriched
-                    print("✓ 已抓取高价值页面正文，将基于原文整理。", flush=True)
-            except Exception:
-                search_context = original_search_context
+    from .xlsx_translation_turn import try_run_xlsx_translation
+    from .config import SKILL_DIR
+    if try_run_xlsx_translation(skill_res, session_files, prompt, history_file,
+            existing_history, overall_start_time, task_deadline, telemetry, WORKSPACE_DIR, SKILL_DIR):
+        return
+    # Source routing and bounded evidence retrieval live outside the lifecycle runner.
+    from .retrieval_workflow import retrieve_context
+    is_weather_intent = is_weather_inquiry(prompt, skill_res) and not template_pdf
+    retrieval = retrieve_context(prompt, skill_res, existing_history=existing_history,
+        session_files=session_files, web_available=bool(args.web_search),
+        weather_intent=is_weather_intent, deadline=task_deadline, telemetry=telemetry)
+    knowledge_context, search_context, search_prompt = retrieval.personal, retrieval.web, retrieval.query
+    has_web_search_permission = retrieval.plan.web_allowed
+    is_search_intent = retrieval.plan.prefetch_web
+    is_weather_intent = is_weather_intent and has_web_search_permission
 
     model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
     if model_name:
@@ -331,6 +328,7 @@ def cmd_run(args):
         pass
 
     file_context = ""
+    complete_attachment_files = set()
     failed_attachment_diagnostics: Dict[str, str] = {}
     attachment_diagnostic_evidence = []
     multimodal_image_parts: List[Dict[str, Any]] = []
@@ -340,25 +338,35 @@ def cmd_run(args):
             raise TimeoutError("Task total execution deadline exceeded before attachment extraction")
         fpath = Path(WORKSPACE_DIR) / fname
         if fpath.exists() and fpath.is_file():
-            try:
-                import hashlib
-                import shutil
-                f_bytes = fpath.read_bytes()
-                curr_h = hashlib.sha256(f_bytes).hexdigest()
-                original_hashes[fname] = curr_h
-                backup_p = inputs_backup_dir / fname
-                need_backup = True
-                if backup_p.exists():
-                    try:
-                        backup_h = hashlib.sha256(backup_p.read_bytes()).hexdigest()
-                        if backup_h == curr_h:
-                            need_backup = False
-                    except Exception:
-                        pass
-                if need_backup:
-                    shutil.copy2(fpath, backup_p)
-            except Exception:
-                pass
+            should_protect_input = bool(
+                getattr(skill_res, "is_generate_intent", False)
+                or getattr(skill_res, "requires_execution", False)
+                or getattr(skill_res, "is_modify_intent", False)
+                or fpath.suffix.lower() in (".xlsx", ".xlsm", ".xls", ".csv")
+            )
+            if should_protect_input:
+                try:
+                    import shutil
+                    from .pdf_text_cache import sha256_file_chunked
+                    curr_h = sha256_file_chunked(fpath)
+                    original_hashes[fname] = curr_h
+                    backup_p = inputs_backup_dir / fname
+                    need_backup = True
+                    if backup_p.exists():
+                        try:
+                            f_st = fpath.stat()
+                            b_st = backup_p.stat()
+                            if b_st.st_size == f_st.st_size and (
+                                b_st.st_mtime_ns == f_st.st_mtime_ns
+                                or sha256_file_chunked(backup_p) == curr_h
+                            ):
+                                need_backup = False
+                        except Exception:
+                            pass
+                    if need_backup:
+                        shutil.copy2(fpath, backup_p)
+                except Exception:
+                    pass
             if fpath.suffix.lower() in IMAGE_EXTENSIONS:
                 # 图片附件不做模型预处理，仅做毫秒级本地完整性/加密预检，通过后直接挂载至多模态消息交由主模型处理
                 img_part, img_diag_err = prepare_multimodal_image_attachment(str(fpath))
@@ -392,17 +400,32 @@ def cmd_run(args):
             is_verbatim_reply = bool(re.search(r'(?:^|[\n\r]|用户指令[：:])\s*(?:仅回复|只回复|仅输出|只需回复|只回答)\b', prompt))
             if is_verbatim_reply:
                 continue
+            if fixed_pdf_translation and fpath.suffix.lower() == '.pdf':
+                file_context += '\n[PDF Source Metadata]: ' + attachment_metadata(fpath)
+                continue
             comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
             if fpath.suffix.lower() in (".xlsx", ".xlsm"):
-                extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+                if is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+                    extracted = f"【既有 Excel 工作簿 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。底层包含数据验证下拉框与条件格式，已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量单元格数据】"
+                else:
+                    extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+            elif fpath.suffix.lower() in (".docx", ".doc") and is_docx_in_place_transform_task(prompt, skill_res, session_files):
+                extracted = f"【既有 Word 文档 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量段落数据】"
             else:
                 extracted = comparison_context or read_workspace_file(
-                    fname, deadline=task_deadline, model_name=model_name, prompt=prompt)
+                    fname, max_chars=policy.max_attachment_chars,
+                    deadline=task_deadline, model_name=model_name, prompt=prompt)
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
+                if fpath.suffix.lower() == '.pdf':
+                    from .pdf_reading import record_pdf_reading
+                    record_pdf_reading(fname, extracted, clipped, attachment_probe.get('profiles', []), telemetry)
+                from .visual_reading_policy import is_attachment_view_complete
+                if is_attachment_view_complete(fname, extracted, clipped, attachment_probe.get("profiles", [])):
+                    complete_attachment_files.add(fname)
                 if any(k in extracted for k in (
                     "【文件受企业安全加密保护无法解析】",
                     "【图片文件损坏或格式无效无法解析】",
@@ -418,7 +441,21 @@ def cmd_run(args):
                         )
                     )
 
-    active_tools = select_active_tools(prompt, skill_res, is_search_intent, has_web_search_permission)
+    file_context += reading_guidance(
+        prompt, session_files, attachment_probe.get('profiles', []),
+        complete_files=complete_attachment_files,
+    )
+    active_tools = select_active_tools(
+        prompt, skill_res, is_search_intent, has_web_search_permission,
+        session_files=session_files,
+        attachment_profiles=attachment_probe.get('profiles', []),
+        complete_files=complete_attachment_files,
+    )
+    if not retrieval.plan.personal_allowed:
+        blocked = {'scan_knowledge'}
+        if not session_files and not skill_res.is_generate_intent:
+            blocked.add('read_file')
+        active_tools = [tool for tool in active_tools if tool.get('function', {}).get('name') not in blocked]
     if (
         multimodal_image_names
         and set(session_files) == set(multimodal_image_names)
@@ -482,6 +519,7 @@ def cmd_run(args):
         prompt=prompt,
         session_files=session_files,
         file_context=file_context,
+        attachment_text_complete=bool(session_files) and all(f in complete_attachment_files for f in session_files),
         knowledge_context=knowledge_context,
         skill_context="",
         search_context=search_context,
@@ -510,6 +548,10 @@ def cmd_run(args):
     messages.append({"role": "user", "content": user_message_content})
 
     # 5. 执行 ReAct 代理循环
+    if skill_res.is_inspect_intent and not skill_res.is_generate_intent:
+        from .document_reading_budget import document_read_rounds
+        skill_res.default_rounds = max(skill_res.default_rounds,
+            document_read_rounds(attachment_probe.get('profiles', []), policy.max_tool_result_chars))
     max_rounds = policy.determine_max_rounds(
         prompt,
         is_design_or_ppt=(skill_res.is_ppt_intent or skill_res.is_design_intent),
@@ -526,6 +568,11 @@ def cmd_run(args):
 
     # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
     retrieval_evidence = []
+    if knowledge_context:
+        from .tool_result import adapt_tool_output
+        personal_receipt = adapt_tool_output(knowledge_context)
+        personal_receipt.provenance = {'tool': 'scan_knowledge', 'phase': 'prefetch'}
+        retrieval_evidence.append(personal_receipt)
     if search_context:
         from .tool_result import adapt_tool_output
         receipt = adapt_tool_output(search_context)
@@ -565,7 +612,7 @@ def cmd_run(args):
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
 
             if is_deliverable_task:
-                execution_instruction = build_deliverable_execution_instruction(skill_res)
+                execution_instruction = build_deliverable_execution_instruction(skill_res, prompt=prompt)
                 messages.append({
                     "role": "user",
                     "content": execution_instruction,
@@ -592,7 +639,11 @@ def cmd_run(args):
         policy.thinking = False
         policy.reasoning_effort = None
         print("⚡ [Harness Phase Transition] 切换为执行与工具调用阶段：精简推理，优先调用工具或呈现结果。", flush=True)
-    elif policy.thinking:
+    elif policy.thinking and (is_deliverable_task or (
+        bool(active_tools) and not (session_files and all(f in complete_attachment_files for f in session_files))
+    )):
+        # Optional native review on an already preloaded document must not
+        # change the caller's invocation settings just because tools stay visible.
         policy.thinking = False
         policy.reasoning_effort = None
 
@@ -615,6 +666,8 @@ def cmd_run(args):
             initial_execution_evidence=retrieval_evidence,
             user_prompt=prompt,
             delivery_session_id=session_id,
+            mcp_readonly_skill_id=(skill_res.skill_id if getattr(skill_res, 'mcp_read_only', False)
+                                  and not skill_res.is_generate_intent else None),
             user_declarations={
                 'unit_confirmation': (skill_res.admission or {}).get('unit_confirmation'),
                 'user_statements': [prompt.split('用户指令：')[-1], *[
@@ -651,15 +704,26 @@ def cmd_run(args):
         t_export_start = time.time()
         from .spreadsheet_chart_delivery import managed_chart_export
         from .pdf_preview_tool import managed_pdf_export
-        if managed_chart_export(loop_res.telemetry) or managed_pdf_export(loop_res.telemetry):
+        from .pptx_workflow import managed_pptx_export
+        if managed_chart_export(loop_res.telemetry) or managed_pdf_export(loop_res.telemetry) or managed_pptx_export(loop_res.telemetry):
             # Published files already passed run-scoped acceptance. Do not scan or
             # recompile them into shared index.html, including on failed delivery.
             final_text, exported_html_files, detected_deliverables = raw_final_text, [], []
         else:
+            deliv_list = getattr(skill_res, "deliverables", None) or []
+            is_native_pptx_task = bool(
+                skill_res
+                and (
+                    getattr(skill_res, "skill_id", None) == "pptx"
+                    or any(str(d).lower().endswith((".pptx", ".ppt")) for d in deliv_list)
+                )
+                and not any(str(d).lower().endswith(".html") for d in deliv_list)
+            )
             is_active_ppt_gen = bool(
                 skill_res
                 and skill_res.is_ppt_intent
                 and skill_res.is_generate_intent
+                and not is_native_pptx_task
                 and not (skill_res.is_inspect_intent and not skill_res.is_generate_intent)
             )
             final_text, exported_html_files = ArtifactExporter.export_html(
@@ -678,14 +742,18 @@ def cmd_run(args):
                 turn_start_time=overall_start_time,
                 session_files=session_files,
                 expected_deliverables=skill_res.deliverables if skill_res else None,
-                prompt=prompt
+                prompt=prompt,
+                is_inspect_intent=bool(skill_res and skill_res.is_inspect_intent),
+                is_generate_intent=bool(skill_res and skill_res.is_generate_intent),
             )
 
         # Shell and legacy exporters must pass the same PDF publication gate.
         from .pdf_external_delivery import enforce_external_pdf_delivery
         from .config import SKILL_DIR
         if enforce_external_pdf_delivery(loop_res, WORKSPACE_DIR, SKILL_DIR,
-                overall_start_time, prompt, task_deadline, session_files):
+                overall_start_time, prompt, task_deadline, session_files,
+                is_inspect_intent=bool(skill_res and skill_res.is_inspect_intent),
+                is_generate_intent=bool(skill_res and skill_res.is_generate_intent)):
             final_text, exported_html_files, detected_deliverables = loop_res.final_text, [], []
 
         # 追加结构化资料与引用来源页脚（本地知识库与网络检索）
@@ -708,12 +776,18 @@ def cmd_run(args):
 
         from .response_sources import append_retrieval_sources_footer
         from .file_tools import get_last_scanned_knowledge_files
-        final_text = append_retrieval_sources_footer(
-            final_text,
-            prompt=prompt,
-            search_context=search_context,
-            local_knowledge_files=get_last_scanned_knowledge_files(),
-        )
+        from .mcp_answer_review import review_mcp_answer
+        if not loop_res.stop_reason:
+            final_text = review_mcp_answer(final_text, prompt, loop_res.execution_evidence or [],
+                model_name, policy, telemetry, task_deadline,
+                readonly_skill_id=skill_res.skill_id if getattr(skill_res, 'mcp_read_only', False) else None)
+        from .mcp_sources import finalize_mcp_sources
+        mcp_text = finalize_mcp_sources(final_text, loop_res.execution_evidence or [],
+            selected=bool(getattr(skill_res, 'disclosure_steps', 0)), prompt=prompt,
+            stop_reason=loop_res.stop_reason, skill_id=skill_res.skill_id, telemetry=telemetry)
+        final_text = mcp_text if mcp_text is not None else append_retrieval_sources_footer(
+            final_text, prompt=prompt, search_context=search_context,
+            local_knowledge_files=get_last_scanned_knowledge_files(), used_only=True)
 
         # 7. 会话历史持久化
         t_persist_start = time.time()
@@ -769,7 +843,9 @@ def cmd_run(args):
         TelemetryStats.emit_final_output(final_text)
 
     except TimeoutError as e:
-        print(f"\n❌ [DeepSeek Harness 超时]: 任务执行超时: {e}", file=sys.stderr)
+        expired = task_deadline is not None and time.monotonic() >= task_deadline
+        detail = '任务总执行时限已到' if expired else '模型或工具单次请求超时'
+        print(f"\n❌ [DeepSeek Harness 超时]: {detail}: {e}", file=sys.stderr)
         sys.exit(124)
     except urllib.error.HTTPError as e:
         try:
@@ -796,14 +872,10 @@ def cmd_run(args):
 
         print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}", file=sys.stderr)
         sys.exit(1)
-    except ModelRepetitionLoopError as e:
-        breaker_msg = (
-            "⚠️ **模型推理陷入死循环，已触发主动熔断保护**\n\n"
-            f"- **异常原因**：检测到大模型在生成推理思考链或回复内容时陷入周期性机械重复（连续复读模式，模式长 {len(e.pattern)} 字，已复读 {e.repeat_count} 次）。为避免无休止等待与算力浪费，平台已主动为您熔断打断。\n"
-            "- **💡 建议操作**：\n"
-            "  1. 请直接重新发送指令，或稍后点击重试；\n"
-            "  2. 若持续出现该现象，可尝试暂时关闭思考模式（关闭 Thinking）或更换提问关键词以打破模型的注意力陷阱。"
-        )
+    except ModelStreamError as e:
+        breaker_msg = model_failure_text(e.code)
+        telemetry.set_wall_clock_duration((time.time() - overall_start_time) * 1000)
+        telemetry.emit_metrics_event()
         TelemetryStats.emit_final_output(breaker_msg)
         if history_file:
             try:

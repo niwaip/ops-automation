@@ -7,6 +7,7 @@ const ImChannelsPage = lazy(() => import('../../im-channels/pages/ImChannelsPage
 const UserEmailSettingsPage = lazy(() => import('../../email/pages/UserEmailSettingsPage'));
 const PersonalApiKeyPanel = lazy(() => import('../components/PersonalApiKeyPanel'));
 const UserCredentialVaultPanel = lazy(() => import('../components/UserCredentialVaultPanel'));
+const McpSettingsPanel = lazy(() => import('../components/McpSettingsPanel'));
 
 const { Title, Text } = Typography;
 
@@ -59,7 +60,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const activeKey =
-    rawTab === 'work'
+    rawTab === 'mcp' ? 'mcp' : rawTab === 'work'
       ? 'work'
       : rawTab === 'im'
       ? 'im'
@@ -73,6 +74,7 @@ export function SettingsPage() {
 
   const tabItems = useMemo(
     () => [
+      { key: 'mcp', label: '外部工具连接', children: <TabErrorBoundary><Suspense fallback={<div>加载中...</div>}><McpSettingsPanel /></Suspense></TabErrorBoundary> },
       {
         key: 'personal',
         label: (
